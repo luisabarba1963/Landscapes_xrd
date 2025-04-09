@@ -62,4 +62,4 @@ xlabelVariable = 'Temperature (°C)';
 lambda = 1.2; % Wavelength
 flagfigure = [1,1,1,1,1,1,1,1,1]; % Enable all output figures
 createcolorbar = false;
-titolofigura = 'Noccioli Organogel ';
+titolofigura = 'Organogel ';
