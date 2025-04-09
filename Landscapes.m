@@ -14,13 +14,13 @@
 % Files requested:  per ogni immagine devono essere presenti nella cartella
 %                   *   i file .chi generati da fit2d
 %                   *   il file_OPE.txt che riporta su ogni riga i valori
-%                       in temperatura (°C) di almeno due fra onset, peak e
+%                       in temperatura (Â°C) di almeno due fra onset, peak e
 %                       endset di tutti i picchi dell'esperimento in
 %                       calorimetria. Se sono presenti solo due valori, si
 %                       suppone che siano onset ed endset.
 %                   *   Se i pattern presentano dei "buchi" dovuti
-%                       all'esistenza della griglia su Pilatus, è bene che
-%                       in tali buchi il valore dell'intensità sia
+%                       all'esistenza della griglia su Pilatus, Ã¨ bene che
+%                       in tali buchi il valore dell'intensitÃ  sia
 %                       esattamente zero (usare threshold mask), in modo da
 %                       potere a seconda dei casi riconoscere la zona da
 %                       interpolare o limitarsi a non rappresentare la
@@ -53,7 +53,7 @@ flagfigure=[1,1,1,1,1,1,1,1,1];     %Nell'ordine,
 %WAXS completo grigio, SAXS completo grigio e SAXS/WAXS contour
 lambda=1.2;                         %Wavelenght
 nameroot='Ramp_';        %Data collection name
-titolofigura = 'Noccioli Organogel'; %Titolo per la barra della finestra
+titolofigura = 'Organogel'; %Titolo per la barra della finestra
 titolofigura1=strrep(titolofigura, '_', '\_'); %Titolo interno della figura
 WAXDlim(1)=1.53;        %WAXD interplanar distances lower limit
 WAXDlim(2)=10;        %WAXD interplanar distances upper limit
@@ -71,10 +71,10 @@ label = 'Variable';        %Se si vuole rappresentare i grafici in
 % Variable='Xposition';
 % xlabelVariable='X position(mm)';
 Variable='Temperature';
-xlabelVariable='Temperature (°C)';
+xlabelVariable='Temperature (Â°C)';
 % Variable='Time';
 % xlabelVariable='Time (min)';
-TM='°C'; %Unità di misura delle temperature misurate
+TM='Â°C'; %UnitÃ  di misura delle temperature misurate
 ViewColorFigures=[-45 46];
 ViewGrayFigures=[90 60];
 createcolorbar=false;    %Colorbar all'interno della figura; true o false
@@ -82,8 +82,8 @@ titoli = true;          %Titolo all'interno della figura; true o false
 
 
 %NormalizationFactor=Intensity(1250,:); %Tipicamente, il valore massimo del
-%picco più intenso o i valori di IOC2
-NormalizationFactor=1; %Tipicamente, il valore massimo del picco più intenso o i valori di IOC2
+%picco piÃ¹ intenso o i valori di IOC2
+NormalizationFactor=1; %Tipicamente, il valore massimo del picco piÃ¹ intenso o i valori di IOC2
 ShiftTemporale=0;       %Corregge eventuali ritardi nella scrittura del
 %file su phase (obsoleto)
 
@@ -92,10 +92,10 @@ ShiftTemporale=0;       %Corregge eventuali ritardi nella scrittura del
 XtickStep=0;           %Ampiezza step per tick su asse tempo/temperatura
 XlabelStep=0;          %Ampiezza step per label dei tick
 Contour9LevelStep=0; %Step fra i livelli nel contour della bassa
-%risoluzione (SAXS). Più è piccolo, più
+%risoluzione (SAXS). PiÃ¹ Ã¨ piccolo, piÃ¹
 %i livelli saranno fitti (e numerosi). Automatico=0
 Contour10LevelStep=0; %Step fra i livelli nel contour dell'alta
-%risoluzione (WAXS). Più è piccolo, più
+%risoluzione (WAXS). PiÃ¹ Ã¨ piccolo, piÃ¹
 %i livelli saranno fitti (e numerosi). Automatico=0
 FormatoFileCriostato='%d %*c %d %*c %d %d %*c %d %*c %d  %*s %*s  %f %*s';
 % FormatNumerazionePatternFiles='%05s'; %specifica il numero di cifre
@@ -115,7 +115,7 @@ font_size=10;
 switch Variable
     case 'Temperature'
         mappa='parula';
-        colorbarlabel='T(°C)';
+        colorbarlabel='T(Â°C)';
     otherwise
         mappa='pink';
         colorbarlabel=xlabelVariable;
@@ -130,7 +130,7 @@ closeimages=false;
 % 'flag' consists of the colors red, white, blue, and black. This colormap completely changes color with each index increment.
 % 'gray' returns a linear grayscale colormap.
 % 'hot' varies smoothly from black through shades of red, orange, and yellow, to white.
-% 'hsv' varies the hue component of the hue-saturation-value color model. The colors begin with red, pass through yellow, green, cyan, blue, magenta, and return to red. The colormap is particularly appropriate for displaying periodic functions. hsv(m) is the same as hsv2rgb([h ones(m,2)]) where h is the linear ramp, h = (0:m–1)'/m.
+% 'hsv' varies the hue component of the hue-saturation-value color model. The colors begin with red, pass through yellow, green, cyan, blue, magenta, and return to red. The colormap is particularly appropriate for displaying periodic functions. hsv(m) is the same as hsv2rgb([h ones(m,2)]) where h is the linear ramp, h = (0:mâ€“1)'/m.
 % 'jet' ranges from blue to red, and passes through the colors cyan, yellow, and orange. It is a variation of the hsv colormap. The jet colormap is associated with an astrophysical fluid jet simulation from the National Center for Supercomputer Applications. See the Examples section.
 % 'lines' produces a colormap of colors specified by the axes ColorOrder property and a shade of gray.
 % 'pink' contains pastel shades of pink. The pink colormap provides sepia tone colorization of grayscale photographs.
@@ -356,7 +356,7 @@ for k=1:(ncurves)
     % se un file non esiste passa al successivo
     if exist(s,'file')
         [DueTheta(:,1),Intensity(:,k-nreject)] = textread(s,'',-1,'headerlines', 4);
-        %mette la colonna dei 2theta in DueTheta e la colonna delle intensità
+        %mette la colonna dei 2theta in DueTheta e la colonna delle intensitÃ 
         %nella k-esima colonna di Intensity
     else
         % incrementa il contatore di "buchi" nella raccolta dati e
@@ -384,7 +384,7 @@ if nreject ~=0
     end
     Intensity(:,ncurves-nreject+1:ncurves)=[];
 end
-%% Normalizzazione delle intensità
+%% Normalizzazione delle intensitÃ 
 [rows,col]=size(Intensity);
 if size(NormalizationFactor)==[1,1]
     A=repmat(NormalizationFactor,rows,col);
@@ -692,7 +692,7 @@ if DSCmatch
         OPE=zeros(si(1), si(2));
         %il file OPE contiene una riga per ciascun picco del DSC,
         %e per ciascuna riga riporta almeno due fra le temperature di Onset Peak
-        %ed Endset in °C.
+        %ed Endset in Â°C.
         %Che il picco si trovi nella parte decrescente o crescente della rampa
         %si desume dal fatto che la sequenza OPE sia decrescente o crescente.
         %Mettiamo nella matrice OPE i numeri ordinali delle curve corrispondenti.
@@ -759,7 +759,7 @@ if DSCmatch
     end
 end
 %% Output cartella Indexing e file xls delle I e dei pattern significativi
-%Usciamo con due file xls, uno col matricione delle intesità e
+%Usciamo con due file xls, uno col matricione delle intesitÃ  e
 %l'altro con prime due colonne le 2Theta e le d e le altre colonne con i
 %pattern misurati in corrispondenza delle temperature di onset peak ed
 %endset del dsc. Crea la struttura di directory per poter lavorare con
@@ -856,7 +856,7 @@ if DSCmatch
     xlswrite(nomeIntensity, Intensity);
 end
 h = waitbar(0,'Finding zero intensity regions...');
-%% Interpolazione del'intensità alle regioni non misurate, segnalando tramite colore
+%% Interpolazione del'intensitÃ  alle regioni non misurate, segnalando tramite colore
 for i=1 : numrows(1)
     if Intensity(i,:)==zeros(1,ncurves-nreject)
         Intensity(i,:)=NaN;
@@ -876,7 +876,7 @@ if Interpolate==true
     %http://www.mathworks.com/matlabcentral/fileexchange/4551-inpaintnans,
     %MATLAB Central File Exchange. Retrieved Oct 4, 2012.
 end
-%% Crea le sottomatrici contenenti i dati di intensità diffratta relativi a bassa e alta risoluzione
+%% Crea le sottomatrici contenenti i dati di intensitÃ  diffratta relativi a bassa e alta risoluzione
 dmin=d(numrows(1));
 h = waitbar(0,'Creating high resolution intensity matrices...');
 for i=2:numrows(1)
@@ -1175,7 +1175,7 @@ if flagfigure(1)==1
     else
         xlabel(axes1,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes1,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    ylabel(axes1,'Interplanar Distances(Ã…)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     zlabel(axes1,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     view(axes1,ViewColorFigures);
     grid(axes1,'on');
@@ -1326,7 +1326,7 @@ if flagfigure(2)==1
     else
         xlabel(axes2,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes2,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    ylabel(axes2,'Interplanar Distances(Ã…)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     zlabel(axes2,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     view(axes2,ViewColorFigures);
     grid(axes2,'on');
@@ -1475,7 +1475,7 @@ if flagfigure(3)==1
     else
         xlabel(axes3,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes3,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    ylabel(axes3,'Interplanar Distances(Ã…)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     zlabel(axes3,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     view(axes3,ViewColorFigures);
     grid(axes3,'on');
@@ -1576,7 +1576,7 @@ if flagfigure(4)==1
     else
         xlabel(axes4,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes4,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    ylabel(axes4,'Interplanar Distances(Ã…)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     zlabel(axes4,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
 
     view(axes4,ViewColorFigures);
@@ -1725,7 +1725,7 @@ if flagfigure(5)==1
     else
         xlabel(axes5,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes5,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    ylabel(axes5,'Interplanar Distances(Ã…)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     zlabel(axes5,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     view(axes5,ViewColorFigures);
     grid(axes5,'on');
@@ -1877,7 +1877,7 @@ if flagfigure(6)==1
     else
         xlabel(axes6,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes6,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    ylabel(axes6,'Interplanar Distances(Ã…)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     zlabel(axes6,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     view(axes6,ViewColorFigures);
     grid(axes6,'on');
@@ -1977,7 +1977,7 @@ if flagfigure(7)==1
         else
             xlabel(axes7,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
         end
-        ylabel(axes7,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+        ylabel(axes7,'Interplanar Distances(Ã…)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
         zlabel(axes7,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
         view(axes7,ViewGrayFigures);
         grid(axes7,'on');
@@ -2059,7 +2059,7 @@ if flagfigure(8)==1
     else
         xlabel(axes8,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes8,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    ylabel(axes8,'Interplanar Distances(Ã…)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     zlabel(axes8,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     view(axes8,ViewGrayFigures);
     grid(axes8,'on');
@@ -2120,7 +2120,7 @@ if flagfigure(9)==1
         if titoli
             title(axes9,['SAXD and WAXD Pattern Contour of ' , titolofigura1],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
         end
-        ylabel(axes9,'Interplanar Distance (Å)');
+        ylabel(axes9,'Interplanar Distance (Ã…)');
         hold(axes9,'all');
         % Create contour
         contour9 = contour(getTime(:,1),...
