@@ -1,8 +1,8 @@
 %% Landscapes 2.5
 
 % Script file:      Landscapes.m
-%                   Modified to also plot data as a function of zeta or phi
-%                   instead of temperature
+%                   Modificato per rappresentare i dati anche in funzione
+%                   di zeta o phi invece che in funzione della temperatura
 
 % Purpose:          carica, analizza e visualizza pattern integrati
 %                   tramite fit2d ottenuti nel corso di esperimenti di
@@ -35,7 +35,7 @@
 %       permette di interpolare le parti mancanti causa griglia pilatus
 % 3)    Trovare il modo di scegliere da palette il colore dei DSC e delle
 %       interpolazioni (riga 300)
-% 4)    config.NormalizationFactorzzare a d prescelta
+% 4)    Normalizzare a d prescelta
 % 5)    Riconoscere automaticamente se i punti per picco in OPE sono tre o
 % due
 % %**************************************************************************
@@ -45,9 +45,114 @@
 clc
 close all
 clear
-Config;
+%% Settaggio parametri
+flagfigure=[1,1,1,1,1,1,1,1,1];     %Nell'ordine,
+%flagfigure=[1,0,0,0,0,0,0,0,0];     %Nell'ordine,
+%SAXS completo, SAXS c/f, SAXS f/c,
+%WAXS completo, WAXS c/f, WAXS f/c,
+%WAXS completo grigio, SAXS completo grigio e SAXS/WAXS contour
+lambda=1.2;                         %Wavelenght
+nameroot='Ramp_';        %Data collection name
+titolofigura = 'Organogel'; %Titolo per la barra della finestra
+titolofigura1=strrep(titolofigura, '_', '\_'); %Titolo interno della figura
+WAXDlim(1)=1.53;        %WAXD interplanar distances lower limit
+WAXDlim(2)=10;        %WAXD interplanar distances upper limit
+SAXDlim(1)=10;        %SAXD interplanar distances lower limit
+SAXDlim(2)=70;        %SAXD interplanar distances upper limit
+percorso=pwd;
+label = 'Variable';        %Se si vuole rappresentare i grafici in
+%funzione del tempo, mettere 'secondi', se si vuole
+%rappresentarli in funzione dell'altra variabile,
+%mettere 'Variable'.
+% Variable='Phi';
+% xlabelVariable='Phi(degrees)';
+%Variable='Zeta';
+%xlabelVariable='Zeta(mm)';
+% Variable='Xposition';
+% xlabelVariable='X position(mm)';
+Variable='Temperature';
+xlabelVariable='Temperature (°C)';
+% Variable='Time';
+% xlabelVariable='Time (min)';
+TM='°C'; %Unità di misura delle temperature misurate
+ViewColorFigures=[-45 46];
+ViewGrayFigures=[90 60];
+createcolorbar=false;    %Colorbar all'interno della figura; true o false
+titoli = true;          %Titolo all'interno della figura; true o false
+
+
+%NormalizationFactor=Intensity(1250,:); %Tipicamente, il valore massimo del
+%picco più intenso o i valori di IOC2
+NormalizationFactor=1; %Tipicamente, il valore massimo del picco più intenso o i valori di IOC2
+ShiftTemporale=0;       %Corregge eventuali ritardi nella scrittura del
+%file su phase (obsoleto)
+
+%AUTOMATIZZARE LA SCELTA DELLO STEP
+
+XtickStep=0;           %Ampiezza step per tick su asse tempo/temperatura
+XlabelStep=0;          %Ampiezza step per label dei tick
+Contour9LevelStep=0; %Step fra i livelli nel contour della bassa
+%risoluzione (SAXS). Più è piccolo, più
+%i livelli saranno fitti (e numerosi). Automatico=0
+Contour10LevelStep=0; %Step fra i livelli nel contour dell'alta
+%risoluzione (WAXS). Più è piccolo, più
+%i livelli saranno fitti (e numerosi). Automatico=0
+FormatoFileCriostato='%d %*c %d %*c %d %d %*c %d %*c %d  %*s %*s  %f %*s';
+% FormatNumerazionePatternFiles='%05s'; %specifica il numero di cifre
+FormatNumerazionePatternFiles='%02s'; %specifica il numero di cifre
+%che compongono la parte numerale dei pattern files
+FormatoNomeChiFiles1=nameroot;
+FormatoNomeChiFiles2= '.chi';
+Interpolate=false;
+DSCmatch=true;
+DSCpoints=3;    %Se il file .OPE contiene valori di temperatura per
+%Onset Peak ed Endset mettere 3, se contiene valori
+%di temperatura per Onset ed Endset mettere 2
+DSCas2dPlots=true;%True: overimposes 2d plots on 3d in correspondence
+%of onset peak and enset False: signals OPE changing mesh color
+font_name='Lucida Console';
+font_size=10;
+switch Variable
+    case 'Temperature'
+        mappa='parula';
+        colorbarlabel='T(°C)';
+    otherwise
+        mappa='pink';
+        colorbarlabel=xlabelVariable;
+end
+
+closeimages=false;
+% 'autumn' varies smoothly from red, through orange, to yellow.
+% 'bone' is a grayscale colormap with a higher value for the blue component. This colormap is useful for adding an "electronic" look to grayscale images.
+% 'colorcube' contains as many regularly spaced colors in RGB colorspace as possible, while attempting to provide more steps of gray, pure red, pure green, and pure blue.
+% 'cool' consists of colors that are shades of cyan and magenta. It varies smoothly from cyan to magenta.
+% 'copper' varies smoothly from black to bright copper.
+% 'flag' consists of the colors red, white, blue, and black. This colormap completely changes color with each index increment.
+% 'gray' returns a linear grayscale colormap.
+% 'hot' varies smoothly from black through shades of red, orange, and yellow, to white.
+% 'hsv' varies the hue component of the hue-saturation-value color model. The colors begin with red, pass through yellow, green, cyan, blue, magenta, and return to red. The colormap is particularly appropriate for displaying periodic functions. hsv(m) is the same as hsv2rgb([h ones(m,2)]) where h is the linear ramp, h = (0:m–1)'/m.
+% 'jet' ranges from blue to red, and passes through the colors cyan, yellow, and orange. It is a variation of the hsv colormap. The jet colormap is associated with an astrophysical fluid jet simulation from the National Center for Supercomputer Applications. See the Examples section.
+% 'lines' produces a colormap of colors specified by the axes ColorOrder property and a shade of gray.
+% 'pink' contains pastel shades of pink. The pink colormap provides sepia tone colorization of grayscale photographs.
+% 'prism' repeats the six colors red, orange, yellow, green, blue, and violet.
+% 'spring' consists of colors that are shades of magenta and yellow.
+% 'summer' consists of colors that are shades of green and yellow.
+% 'white' is an all white monochrome colormap.
+% 'winter' consists of colors that are shades of blue and green.
+%% Creazione nomi dei file
+estImmagini='.tif';
+estPattern='.chi';
+estFigure='png';
+nomecryo=[nameroot 'cryo' '.txt'] ;
+nomeOPE=[nameroot 'OPE' '.txt'] ;
+nomeWS=[nameroot 'WS' '.mat'] ;
+nomexcel=[nameroot 'cryo' '.xls'];
+nomeDSC=[nameroot 'DSC.xls'];
+nomeIntensity=[nameroot 'Intensity.xls'];
+%% Creazione nomi delle figure
+
 %% Importa tutti i dati sperimentali dal file DataExperiment.log
-if exist([config.path 'DataExperiment.log'],'file')
+if exist('DataExperiment.log','file')
     DataExperiment=importdata('DataExperiment.log');
     x=strfind(DataExperiment, 'acquired:');
     DataExperiment=DataExperiment(~cellfun('isempty',x));
@@ -61,7 +166,7 @@ if exist([config.path 'DataExperiment.log'],'file')
         DataExperiment{ii}(1)=regexp(DataExperiment{ii}(1), 'Image acquired:', 'split');
         getTime{ii,1}=DataExperiment{ii,1}{1,1}{1,1};
         getName{ii,1}=DataExperiment{ii,1}{1,1}{1,2};
-        switch config.Variable
+        switch Variable
             case 'Temperature'
                 getVariable{ii,1}=DataExperiment{ii,1}{1,2};
             case 'Phi'
@@ -73,12 +178,12 @@ if exist([config.path 'DataExperiment.log'],'file')
         end
     end
     delete(h)
-    TF = strfind(getName{1,1}, config.nameroot);%Liberiamo il nome file dal path
+    TF = strfind(getName{1,1}, nameroot);%Liberiamo il nome file dal path
     getName=cellfun(@(x) x(TF:end), getName, 'UniformOutput', false);
     [getName,idx]=unique(getName(:,1));  %eliminiamo duplicati
     getTime=getTime(idx,:);
     getVariable=getVariable(idx,:);
-    switch config.Variable
+    switch Variable
         case 'Temperature'
             getVariable=cellfun(@(x) str2double(regexprep(x,' TEMPERATURE=','')), getVariable, 'UniformOutput', true);
             % Apply function to each cell in cell array: replace string
@@ -99,14 +204,14 @@ if exist([config.path 'DataExperiment.log'],'file')
     ncurves=length(getVariable);
 else
     %%Altrimenti, ricava i tempi dagli header dei file
-    ncurves = size(dir([config.nameroot '*' config.estImmagini]),1);
+    ncurves = size(dir([nameroot '*' estImmagini]),1);
     getTime=cell(ncurves,1);
     h = waitbar(0,'Extracting time variable from images headers...');
     nreject=0;
     elim=zeros(ncurves,1);
     elim1=zeros(ncurves,1);
     for i=1:ncurves
-        s=[config.FormatoNomeChiFiles1 '' sprintf(config.FormatNumerazionePatternFiles,int2str(i)) config.estImmagini];
+        s=[FormatoNomeChiFiles1 '' sprintf(FormatNumerazionePatternFiles,int2str(i)) estImmagini];
         if exist(s, 'file')
             [~,header]=imageread(s,'tif',[1475 1679]);
             getTime{i}=header(31:50);
@@ -135,7 +240,7 @@ else
     %     % Altrimenti, ricava i tempi dalle date di creazione dei file:
     %     % obsoleto, non dovrebbe essere mai raggiunto, lo tengo per pura
     %     % documentazione
-    %     c = dir([config.nameroot '_*' config.estImmagini]);
+    %     c = dir([nameroot '_*' estImmagini]);
     %     c=struct2cell(c);
     %     c(3:5,:)=[];
     %     c=sortrows(c');
@@ -156,19 +261,19 @@ else
     %     FormatIn='dd-mmm-yyyy HH:MM:SS';
     %     getTime=cellfun(@(x) 1440*datenum(x,FormatIn), getTime, 'UniformOutput', true);
     %% ...e importa curva temperatura da file excel o dal log del criostato
-    if exist(config.nomexcel,'file')
+    if exist(nomexcel,'file')
         % Esperimento con una misura di temperatura per pattern, registrate
         % su file excel
-        %         getVariable=importdata(config.nomexcel);
-        getVariable=xlsread(config.nomexcel,1);
+        %         getVariable=importdata(nomexcel);
+        getVariable=xlsread(nomexcel,1);
         if isstruct(getVariable)
             getVariable=struct2cell(getVariable);
             getVariable=getVariable{2,1};
         end
-    elseif exist(config.nomecryo, 'file')
+    elseif exist(nomecryo, 'file')
         % Esperimento con misure prese al volo e registrazione indipendente
         % del criostato
-        DataExperiment = importdata(config.nomecryo);
+        DataExperiment = importdata(nomecryo);
         DataExperiment=regexp(DataExperiment, ' ', 'split');
         getTimeCryo = cell(length(DataExperiment),1);  % Pre-allocate
         getTemperatureCryo = cell(length(DataExperiment),1);  % Pre-allocate
@@ -185,7 +290,7 @@ else
         %interpolando i dati del criostato, ed estrapolandoli alle regioni
         %senza temperatura misurata.
     else
-        if strcmp(config.label,'config.Variable')
+        if strcmp(label,'Variable')
             warning('OpenFile:notFoundInPath', 'No Temperature file found');
             return
         end
@@ -196,7 +301,7 @@ end
 % XYZ=zeros(ncurves,3);
 % ZetaPosition=zeros(ncurves,1);
 % for k=1:(ncurves)
-%     s = [config.FormatoNomeChiFiles1 '_' sprintf(config.FormatNumerazionePatternFiles,int2str(k)) '_metadata.txt'];
+%     s = [FormatoNomeChiFiles1 '_' sprintf(FormatNumerazionePatternFiles,int2str(k)) '_metadata.txt'];
 %     % se un file non esiste passa al successivo
 %     if exist(s,'file')
 %         fid=fopen(s);
@@ -214,17 +319,17 @@ end
 %         end
 %         fclose(fid);
 %     end
-%     if strcmp(config.Variable,'Zeta')
+%     if strcmp(Variable,'Zeta')
 %     getVariable=ZetaPosition;
 %     end
 % end
 getTime=(getTime-getTime(1)); %espresso in minuti
-if strcmp(config.label,'secondi')
+if strcmp(label,'secondi')
     getVariable=getTime;
 end
 %% Determina la lunghezza dei chi-files
 for k=1:(ncurves)
-    s = [config.FormatoNomeChiFiles1 '' sprintf(config.FormatNumerazionePatternFiles,int2str(k)) config.FormatoNomeChiFiles2];
+    s = [FormatoNomeChiFiles1 '' sprintf(FormatNumerazionePatternFiles,int2str(k)) FormatoNomeChiFiles2];
     % se un file non esiste passa al successivo
     if exist(s,'file')
         chifile = textread(s,'',-1,'headerlines', 4);
@@ -232,7 +337,7 @@ for k=1:(ncurves)
         break
     end
     if k==ncurves
-        warning('OpenFile:notFoundInPath', ['No ' config.FormatoNomeChiFiles1 ' files in directory'])
+        warning('OpenFile:notFoundInPath', ['No ' FormatoNomeChiFiles1 ' files in directory'])
         return
     end
 end
@@ -247,7 +352,7 @@ Intensity=zeros(numrows(1), ncurves);
 nreject=0;
 elim=zeros(ncurves,1);
 for k=1:(ncurves)
-    s = [config.FormatoNomeChiFiles1 '' sprintf(config.FormatNumerazionePatternFiles,int2str(k)) config.FormatoNomeChiFiles2];
+    s = [FormatoNomeChiFiles1 '' sprintf(FormatNumerazionePatternFiles,int2str(k)) FormatoNomeChiFiles2];
     % se un file non esiste passa al successivo
     if exist(s,'file')
         [DueTheta(:,1),Intensity(:,k-nreject)] = textread(s,'',-1,'headerlines', 4);
@@ -279,13 +384,13 @@ if nreject ~=0
     end
     Intensity(:,ncurves-nreject+1:ncurves)=[];
 end
-%% config.NormalizationFactorzzazione delle intensità
+%% Normalizzazione delle intensità
 [rows,col]=size(Intensity);
-if size(config.NormalizationFactor)==[1,1]
-    A=repmat(config.NormalizationFactor,rows,col);
+if size(NormalizationFactor)==[1,1]
+    A=repmat(NormalizationFactor,rows,col);
     %Replicate and tile array
 else
-    A=repmat(config.NormalizationFactor,rows,1);
+    A=repmat(NormalizationFactor,rows,1);
     %Replicate and tile array
 end
 Intensity=Intensity./A;
@@ -317,7 +422,7 @@ end
 if posminVar(2)>posmaxVar(2)
     if posmaxVar(1)>1 && posminVar(2)==ncurves-nreject
         order=1;
-        switch config.Variable
+        switch Variable
             case 'Temperature'
                 orderstring=', Melting and Crystallization';
                 orderstring1=', Melting';
@@ -331,7 +436,7 @@ if posminVar(2)>posmaxVar(2)
                 nomefigWAXD2='WAXDdecr';
                 nomefigSAXD1='SAXDincr';
                 nomefigSAXD2='SAXDdecr';
-                switch config.Variable
+                switch Variable
                     case 'Zeta'
                         orderstring=', Increasing and Decreasing sample height (Zeta)';
                     case 'Xposition'
@@ -342,7 +447,7 @@ if posminVar(2)>posmaxVar(2)
         end
     elseif posmaxVar(1)==1 && posminVar(2)==ncurves-nreject
         order=2;
-        switch config.Variable
+        switch Variable
             case 'Temperature'
                 orderstring=', Crystallization';
                 nomefigWAXD2='WAXDcryst';
@@ -350,7 +455,7 @@ if posminVar(2)>posmaxVar(2)
             otherwise
                 nomefigWAXD2='WAXDdecr';
                 nomefigSAXD2='SAXDdecr';
-                switch config.Variable
+                switch Variable
                     case 'Zeta'
                         orderstring=', Decreasing sample height (Zeta)';
                     case 'Xposition'
@@ -361,7 +466,7 @@ if posminVar(2)>posmaxVar(2)
         end
     elseif posmaxVar(1)==1 && posminVar(2)<ncurves-nreject
         order=3;
-        switch config.Variable
+        switch Variable
             case 'Temperature'
                 orderstring=', Crystallization and Melting';
                 orderstring1=', Crystallization';
@@ -375,7 +480,7 @@ if posminVar(2)>posmaxVar(2)
                 nomefigWAXD1='WAXDdecr';
                 nomefigSAXD2='SAXDincr';
                 nomefigSAXD1='SAXDdecr';
-                switch config.Variable
+                switch Variable
                     case 'Zeta'
                         orderstring=', Decreasing and Increasing sample height (Zeta)';
                     case 'Xposition'
@@ -389,7 +494,7 @@ if posminVar(2)>posmaxVar(2)
 elseif posminVar(2)<posmaxVar(2)
     if posminVar(1)==1 && posmaxVar(2)< ncurves-nreject
         order=4;
-        switch config.Variable
+        switch Variable
             case 'Temperature'
                 orderstring=', Melting and Crystallization';
                 orderstring1=', Melting';
@@ -403,7 +508,7 @@ elseif posminVar(2)<posmaxVar(2)
                 nomefigWAXD2='WAXDdecr';
                 nomefigSAXD1='SAXDincr';
                 nomefigSAXD2='SAXDdecr';
-                switch config.Variable
+                switch Variable
                     case 'Zeta'
                         orderstring=', Increasing and Decreasing sample height (Zeta)';
                     case 'Xposition'
@@ -414,7 +519,7 @@ elseif posminVar(2)<posmaxVar(2)
         end
     elseif posminVar(1)==1 && posmaxVar(2)==ncurves-nreject
         order=5;
-        switch config.Variable
+        switch Variable
             case 'Temperature'
                 orderstring=', Melting';
                 nomefigWAXD1='WAXDmelt';
@@ -422,7 +527,7 @@ elseif posminVar(2)<posmaxVar(2)
             otherwise
                 nomefigWAXD1='WAXDincr';
                 nomefigSAXD1='SAXDincr';
-                switch config.Variable
+                switch Variable
                     case 'Zeta'
                         orderstring=', Increasing sample height (Zeta)';
                     case 'Xposition'
@@ -435,7 +540,7 @@ elseif posminVar(2)<posmaxVar(2)
         end
     elseif posminVar(1)>1 && posmaxVar(2)==ncurves-nreject
         order=6;
-        switch config.Variable
+        switch Variable
             case 'Temperature'
                 orderstring=', Crystallization and Melting';
                 orderstring1=', Crystallization';
@@ -449,7 +554,7 @@ elseif posminVar(2)<posmaxVar(2)
                 nomefigWAXD1='WAXDdecr';
                 nomefigSAXD2='SAXDincr';
                 nomefigSAXD1='SAXDdecr';
-                switch config.Variable
+                switch Variable
                     case 'Zeta'
                         orderstring=', Decreasing and Increasing sample height (Zeta)';
                     case 'Xposition'
@@ -560,27 +665,27 @@ if ~( isequal(plateauStart(1,1),plateauStart(1,2)) && isequal(plateauEnd(1,2),pl
     c=(1+plateauEnd(2)-plateauEnd(1));
     getVariable(plateauEnd(1):plateauEnd(2))=linspace(a,b,c);
 end
-%% Crea il vettore d e la matrice delle temperature config.VariableMatrix
-if exist(config.nomeOPE,'file')
-    TempOPE = textread(config.nomeOPE,'',-1);
+%% Crea il vettore d e la matrice delle temperature VariableMatrix
+if exist(nomeOPE,'file')
+    TempOPE = textread(nomeOPE,'',-1);
 end
-if strcmp(config.Variable,'Temperature')
-    if strcmp(config.TM, 'Kelvin')
+if strcmp(Variable,'Temperature')
+    if strcmp(TM, 'Kelvin')
         getVariable=getVariable-273;
     end
 end
 si= size(DueTheta);
 d=zeros(si(1),1);
-config.VariableMatrix=zeros(si(1),ncurves-nreject);
+VariableMatrix=zeros(si(1),ncurves-nreject);
 for i=1 : si(1)
-    d(i,1)=config.lambda/(2*sin((DueTheta(i,1)/360)*pi));
+    d(i,1)=lambda/(2*sin((DueTheta(i,1)/360)*pi));
 end
 for i=1:si(1)
-    config.VariableMatrix(i,1:ncurves-nreject)=getVariable(1:ncurves-nreject);
+    VariableMatrix(i,1:ncurves-nreject)=getVariable(1:ncurves-nreject);
 end
 %% Importa dati DSC, scrive la matrice dei pattern significativi, cambia il colore del pattern preso in corrispondenza dell'onset, del picco e dell'endset del DSC
-if config.DSCmatch
-    if exist(config.nomeOPE,'file')
+if DSCmatch
+    if exist(nomeOPE,'file')
         si=size(TempOPE);
         q=0;
         flag=0;
@@ -599,8 +704,8 @@ if config.DSCmatch
                         q=q+1;
                         OPE(j,q)=i;
                         %TemperatureMatrix(:,i)=TemperatureMatrix(:,ncurves-nreject);
-                        if ~config.DSCas2dPlots                             
-                            config.VariableMatrix(:,i)=config.VariableMatrix(:,1);
+                        if ~DSCas2dPlots                             
+                            VariableMatrix(:,i)=VariableMatrix(:,1);
                         end
                         if (q==si(2))
                             q=0;
@@ -613,8 +718,8 @@ if config.DSCmatch
                         q=q+1;
                         OPE(j,q)=i
                         %TemperatureMatrix(:,i)=TemperatureMatrix(:,ncurves-nreject);
-                        if ~config.DSCas2dPlots
-                            config.VariableMatrix(:,i)=config.VariableMatrix(:,1);
+                        if ~DSCas2dPlots
+                            VariableMatrix(:,i)=VariableMatrix(:,1);
                         end
                         %TemperatureMatrix(:,i)=TemperatureMatrix(:,ncurves-nreject);
                         if (q==si(2))
@@ -641,16 +746,16 @@ if config.DSCmatch
         end
         if any(a)
             warning('MATLAB:IndexNotPositive', mystring)
-            config.DSCmatch = false;
+            DSCmatch = false;
         end
-        if config.DSCmatch
+        if DSCmatch
             for j=1: i
                 TimeOPE(j)=getTime(OPE(j),1);
                 DSCcurves(:,j+2)=Intensity(:,OPE(j));
             end
         end
     else
-        warning('OpenFile:notFoundInPath', ['No ' config.nomeOPE ' file in directory'])
+        warning('OpenFile:notFoundInPath', ['No ' nomeOPE ' file in directory'])
     end
 end
 %% Output cartella Indexing e file xls delle I e dei pattern significativi
@@ -660,9 +765,9 @@ end
 %endset del dsc. Crea la struttura di directory per poter lavorare con
 %winplotr e mette in ciascuna sottodirectory il file .dat correttamente
 %nominato.
-if config.DSCmatch
-    if exist(config.nomeOPE,'file')
-        if config.DSCpoints==3
+if DSCmatch
+    if exist(nomeOPE,'file')
+        if DSCpoints==3
             mystring='DueTheta d Aonset Apeak Aoffset Bonset Bpeak Boffset Conset Cpeak Coffset Donset Dpeak Doffset Eonset Epeak Eoffset Fonset Fpeak Foffset';
             Intestazione=textscan(mystring, '%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s', 1);
             Intestazione(i+3:20)=[];
@@ -680,13 +785,13 @@ if config.DSCmatch
         h = waitbar(0,'Exporting significative patterns...',...
             'visible','off');
         if isempty(button1)
-            if exist (config.nomeDSC,'file')
-                button1 = questdlg(['File ',config.nomeDSC,' containing significative patterns for indexing already exist. Overwrite?'],'Warning','Yes');
+            if exist (nomeDSC,'file')
+                button1 = questdlg(['File ',nomeDSC,' containing significative patterns for indexing already exist. Overwrite?'],'Warning','Yes');
                 if strcmp(button1, 'Yes')
-                    delete(config.nomeDSC)
-                    fileDSCstring=config.nomeDSC;
+                    delete(nomeDSC)
+                    fileDSCstring=nomeDSC;
                 elseif strcmp(button1, 'No')
-                    mystring=[config.nameroot 'DSC' ];
+                    mystring=[nameroot '_DSC' ];
                     string=[mystring, '*'];
                     files=dir(string);
                     mm=zeros(size(files,1),1);
@@ -700,13 +805,13 @@ if config.DSCmatch
                     quit
                 end
             else
-                fileDSCstring=config.nomeDSC;
+                fileDSCstring=nomeDSC;
             end
         end
         for j=1 : i
             A=cat(2,DSCcurves(:,1),DSCcurves(:,j+2));
             string=Intestazione{1,j+2}{1,1};
-            pathstring=[config.path 'Indexing\' string];
+            pathstring=['./Indexing/' string];
             filestring=[string, '.dat'];
             if exist(pathstring, 'dir')==false
                 mkdir(pathstring)
@@ -722,7 +827,6 @@ if config.DSCmatch
                         files=dir('*.dat');
                         n=files(size(files,1)).name;
                         m=regexp(n,'_(\d*).dat','tokens');
-                        %'\d*' matches any number of consecutive digits.
                         mm=str2double(m{1,1});
                         filestring=[string, '_', int2str(max(mm)+1) '.dat'];
                     elseif strcmp(button, 'Cancel')
@@ -737,19 +841,19 @@ if config.DSCmatch
             B(2:j+1)=[];
             B(3:i+2-j)=[];
             A=vertcat(B,A);
-            if strcmp(button1, 'Yes')|| exist (config.nomeDSC,'file')==false
-                xlswrite(pathstring, A,string, 'A1');
+            if strcmp(button1, 'Yes')|| exist (nomeDSC,'file')==false
+                xlswrite([percorso, '\',fileDSCstring], A,string, 'A1');
             end
-            cd (config.path)
-            xlswrite(config.nomeDSC, A,string, 'A1');
+            cd (percorso)
+            xlswrite([percorso, '/',nomeDSC], A,string, 'A1');
         end
         delete(h)
         OPE=OPE';
         DSCcell=num2cell(DSCcurves);
         DSCcell=vertcat(Int,DSCcell);
-        xlswrite(config.nomeDSC, DSCcell,'Significative patterns', 'A1');
+        xlswrite([percorso,'/',nomeDSC], DSCcell,'Significative patterns', 'A1');
     end
-    xlswrite(config.nomeIntensity, Intensity);
+    xlswrite(nomeIntensity, Intensity);
 end
 h = waitbar(0,'Finding zero intensity regions...');
 %% Interpolazione del'intensità alle regioni non misurate, segnalando tramite colore
@@ -760,12 +864,12 @@ for i=1 : numrows(1)
     waitbar(i/numrows(1))
 end
 delete(h)
-if config.Interpolate==true
+if Interpolate==true
     k=isnan(Intensity(:,1));
     % list the nodes which are known, and which will
     % be interpolated
     nan_list=find(k);
-    config.VariableMatrix(nan_list,:)=0;
+    VariableMatrix(nan_list,:)=0;
     Intensity=inpaint_nans(Intensity,2);
     %Ricordarsi di citare: D'Errico, John (2004).
     %Interpolate NaN elements in a 2-d array using non-NaN elements
@@ -776,10 +880,10 @@ end
 dmin=d(numrows(1));
 h = waitbar(0,'Creating high resolution intensity matrices...');
 for i=2:numrows(1)
-    if d(i)<config.WAXDlim(2)
+    if d(i)<WAXDlim(2)
         j=i-1;
         IntensityWAXD=Intensity(j:numrows(1),:);
-        ColoriWAXD=config.VariableMatrix(j:numrows(1),:);
+        ColoriWAXD=VariableMatrix(j:numrows(1),:);
         dWAXD=d(j:numrows(1));
         break
     end
@@ -788,38 +892,38 @@ end
 delete(h)
 h = waitbar(0,'Creating low resolution intensity matrices...');
 for i=2:j
-    if config.SAXDlim(2)>d(i) && d(i)>config.SAXDlim(1)
+    if SAXDlim(2)>d(i) && d(i)>SAXDlim(1)
         dSAXD=d(i-1:j);
         IntensitySAXD=Intensity(i-1:j,:);
-        ColoriSAXD=config.VariableMatrix(i-1:j,:);
+        ColoriSAXD=VariableMatrix(i-1:j,:);
         break
     end
     waitbar(i/numrows(1))
 end
 delete(h)
-h = waitbar(0,'Creating config.Variable/Color matrices...');
+h = waitbar(0,'Creating Variable/Color matrices...');
 for i=j:numrows(1)
-    if d(i)<config.WAXDlim(1)
+    if d(i)<WAXDlim(1)
         IntensityWAXD=Intensity(j:i,:);
-        ColoriWAXD=config.VariableMatrix(j:i,:);
+        ColoriWAXD=VariableMatrix(j:i,:);
         dWAXD=d(j:i);
         break
     end
     waitbar(i/numrows(1))
 end
 delete(h)
-if config.flagfigure(4) || config.flagfigure(5) || config.flagfigure(6) || config.flagfigure(7)
+if flagfigure(4) || flagfigure(5) || flagfigure(6) || flagfigure(7)
     ZmaxWAXD=max(max(IntensityWAXD));
     ZminWAXD=min(min(IntensityWAXD));
-    if config.Contour9LevelStep==0
-        config.Contour9LevelStep=(ZmaxWAXD-ZminWAXD)/100;
+    if Contour9LevelStep==0
+        Contour9LevelStep=(ZmaxWAXD-ZminWAXD)/100;
     end
 end
-if config.flagfigure(1) || config.flagfigure(2) || config.flagfigure(3) || config.flagfigure(7)
+if flagfigure(1) || flagfigure(2) || flagfigure(3) || flagfigure(7)
     ZmaxSAXD=max(max(IntensitySAXD));
     ZminSAXD=min(min(IntensitySAXD));
-    if config.Contour10LevelStep==0
-        config.Contour10LevelStep=(ZmaxSAXD-ZminSAXD)/100;
+    if Contour10LevelStep==0
+        Contour10LevelStep=(ZmaxSAXD-ZminSAXD)/100;
     end
 end
 switch order
@@ -829,7 +933,7 @@ switch order
         ColoriSAXDCristallizzazione=ColoriSAXD(:,1:ncurves-nreject);
         TempiCristallizzazione=getTime(1:ncurves-nreject,1);
         TcMin=getTime(1,1);
-        config.TMax=getTime(ncurves-nreject,1);
+        TMax=getTime(ncurves-nreject,1);
         ZmaxcSAXD=max(max(IntensitySAXDCristallizzazione));
         ZmincSAXD=min(min(IntensitySAXDCristallizzazione));
 
@@ -842,14 +946,14 @@ switch order
         TempiFusione=getTime(1:ncurves-nreject,1);
         TfMax=getTime(ncurves-nreject,1);
 
-        if config.flagfigure(1) || config.flagfigure(2) || config.flagfigure(3) || config.flagfigure(7)
+        if flagfigure(1) || flagfigure(2) || flagfigure(3) || flagfigure(7)
 
             IntensitySAXDFusione=IntensitySAXD(:,1:ncurves-nreject);
             ColoriSAXDFusione=ColoriSAXD(:,1:ncurves-nreject);
             ZmaxfSAXD=max(max(IntensitySAXDFusione));
             ZminfSAXD=min(min(IntensitySAXDFusione));
         end
-        if config.flagfigure(4) || config.flagfigure(5) || config.flagfigure(6) || config.flagfigure(8)
+        if flagfigure(4) || flagfigure(5) || flagfigure(6) || flagfigure(8)
             IntensityWAXDFusione=IntensityWAXD(:,1:ncurves-nreject);
             ColoriWAXDFusione=ColoriWAXD(:,1:ncurves-nreject);
             ZmaxfWAXD=max(max(IntensityWAXDFusione));
@@ -873,7 +977,7 @@ switch order
         ColoriSAXDCristallizzazione=ColoriSAXD(:,posmaxVar(2):ncurves-nreject);
         TempiCristallizzazione=getTime(posmaxVar(2):ncurves-nreject,1);
         TcMin=getTime(posmaxVar(2),1);
-        config.TMax=getTime(ncurves-nreject,1);
+        TMax=getTime(ncurves-nreject,1);
         ZmaxcSAXD=max(max(IntensitySAXDCristallizzazione));
         ZmincSAXD=min(min(IntensitySAXDCristallizzazione));
 
@@ -900,7 +1004,7 @@ switch order
         ColoriSAXDFusione=ColoriSAXD(:,posminVar(2):ncurves-nreject);
         TempiFusione=getTime(posminVar(2):ncurves-nreject,1);
         TfMin=getTime(posminVar(2),1);
-        config.TMax=getTime(ncurves-nreject,1);
+        TMax=getTime(ncurves-nreject,1);
         ZmaxfSAXD=max(max(IntensitySAXDFusione));
         ZminfSAXD=min(min(IntensitySAXDFusione));
 
@@ -910,26 +1014,26 @@ switch order
         ZminfWAXD=min(min(IntensityWAXDFusione));
 
 end
-%% Crea ticks e config.label per l'asse X (Tempo/Temperatura/Phi/Zeta ecc)
-if config.XtickStep==0
-    config.XtickStep=(ceil(max(getVariable))-floor(min(getVariable)))/5;
-    config.XlabelStep=config.XtickStep;
+%% Crea ticks e label per l'asse X (Tempo/Temperatura/Phi/Zeta ecc)
+if XtickStep==0
+    XtickStep=(ceil(max(getVariable))-floor(min(getVariable)))/5;
+    XlabelStep=XtickStep;
 end
-%config.flagfigure=[0,0,0,1,0,0,0,0,1];     %Nell'ordine,
+%flagfigure=[0,0,0,1,0,0,0,0,1];     %Nell'ordine,
 %SAXS completo, SAXS c/f, SAXS f/c,
 %WAXS completo, WAXS c/f, WAXS f/c,
 %WAXS completo grigio, SAXS completo grigio e SAXS/WAXS contour
 
 switch order
     case 2 %', Crystallization'
-        config.flagfigure(1)=0;
-        config.flagfigure(3)=0;
-        config.flagfigure(4)=0;
-        config.flagfigure(6)=0;
-        if strcmp(config.label,'config.Variable')
-            a=fix(getVariable(posmaxVar(2),1)/config.XtickStep)*config.XtickStep;
-            b=fix(getVariable(posminVar(1),1)/config.XtickStep)*config.XtickStep;
-            xi=(a:-config.XtickStep:b);
+        flagfigure(1)=0;
+        flagfigure(3)=0;
+        flagfigure(4)=0;
+        flagfigure(6)=0;
+        if strcmp(label,'Variable')
+            a=fix(getVariable(posmaxVar(2),1)/XtickStep)*XtickStep;
+            b=fix(getVariable(posminVar(1),1)/XtickStep)*XtickStep;
+            xi=(a:-XtickStep:b);
             yi=interp1(getVariable(posmaxVar(2):posminVar(1),1),getTime(posmaxVar(2):posminVar(1),1),xi,'linear','extrap');
             nstepy(1)=round(getTime(posmaxVar(2)))/mean(diff(yi));%numero di step nella regione iniziale a valore costante della variabile
             nstepy(2)=round(getTime((1+posminVar(2)-posminVar(1))))/mean(diff(yi));%numero di step nella regione finale a valore costante della variabile
@@ -947,15 +1051,15 @@ switch order
             yii=[];
         end
     case 5  %', Melting'
-        config.flagfigure(1)=0;
-        config.flagfigure(2)=0;
-        config.flagfigure(4)=0;
-        config.flagfigure(5)=0;
-        i=strcmp(config.label,'config.Variable') ;
+        flagfigure(1)=0;
+        flagfigure(2)=0;
+        flagfigure(4)=0;
+        flagfigure(5)=0;
+        i=strcmp(label,'Variable') ;
         if i==true
-            a=fix(getVariable(1,1)/config.XtickStep)*config.XtickStep;
-            b=fix(getVariable(ncurves-nreject,1)/config.XtickStep)*config.XtickStep;
-            xi=(a:config.XtickStep:b);
+            a=fix(getVariable(1,1)/XtickStep)*XtickStep;
+            b=fix(getVariable(ncurves-nreject,1)/XtickStep)*XtickStep;
+            xi=(a:XtickStep:b);
             yi=interp1(getVariable(posminVar(2):posmaxVar(1),1),getTime(posminVar(2):posmaxVar(1),1),xi,'linear','extrap');
             nstepy(1)=round(getTime(posminVar(1)))/mean(diff(yi));%numero di step nella regione iniziale a valore costante della variabile
             nstepy(2)=round(getTime((1+posmaxVar(1)-posminVar(1))))/mean(diff(yi));%numero di step nella regione finale a valore costante della variabile
@@ -973,18 +1077,18 @@ switch order
             yii=[];
         end
     case {1,4}  %', Melting and Crystallization'
-        if strcmp(config.label,'config.Variable')
-            a=(fix(getVariable(1,1)/config.XtickStep))*config.XtickStep;
+        if strcmp(label,'Variable')
+            a=(fix(getVariable(1,1)/XtickStep))*XtickStep;
             b=fix(posmaxVar(1));
-            c=fix(getVariable(b,1)/config.XtickStep)*config.XtickStep;
-            d=fix(1+(getVariable(ncurves-nreject,1))/config.XtickStep)*config.XtickStep;
-            xi=(a:config.XtickStep:c);
+            c=fix(getVariable(b,1)/XtickStep)*XtickStep;
+            d=fix(1+(getVariable(ncurves-nreject,1))/XtickStep)*XtickStep;
+            xi=(a:XtickStep:c);
             yi=interp1(getVariable(1:b,1),getTime(1:b,1),xi,'linear', 'extrap');
             %Interpolazione dei valori della temperatura in
             %corrispondenza dei valori del tempo nel range compreso
             %fra primo valore di temperatura e massimo valore di
             %temperatura
-            xii=(c:-config.XtickStep:d);
+            xii=(c:-XtickStep:d);
             yii=interp1(getVariable(b:ncurves-nreject,1),getTime(b:ncurves-nreject,1),xii,'linear', 'extrap');
             %Interpolazione dei valori della temperatura in
             %corrispondenza dei valori del tempo nel range compreso
@@ -997,20 +1101,20 @@ switch order
             end
         end
     case {3,6} %', Crystallization and Melting'
-        if strcmp(config.label,'config.Variable')
-            %a=fix((getVariable(1,1)*2)/config.XtickStep)*2*config.XtickStep;
+        if strcmp(label,'Variable')
+            %a=fix((getVariable(1,1)*2)/XtickStep)*2*XtickStep;
             %Temperatura iniziale arrotondata
-            a=(fix(getVariable(1,1)/config.XtickStep))*config.XtickStep;
+            a=(fix(getVariable(1,1)/XtickStep))*XtickStep;
             b=fix(posminVar(2));
-            c=fix(getVariable(b,1)/config.XtickStep)*config.XtickStep;
-            d=fix(getVariable(ncurves-nreject,1)/config.XtickStep)*config.XtickStep;
-            xi=(a:-config.XtickStep:c);
+            c=fix(getVariable(b,1)/XtickStep)*XtickStep;
+            d=fix(getVariable(ncurves-nreject,1)/XtickStep)*XtickStep;
+            xi=(a:-XtickStep:c);
             yi=interp1(getVariable(1:b,1),getTime(1:b,1),xi,'linear', 'extrap');
             %Interpolazione dei valori della temperatura in
             %corrispondenza dei valori del tempo nel range compreso
             %fra primo valore di temperatura e minimo valore di
             %temperatura
-            xii=(c:config.XtickStep:d);
+            xii=(c:XtickStep:d);
             yii=interp1(getVariable(b:ncurves-nreject,1),getTime(b:ncurves-nreject,1),xii,'linear', 'extrap');
             %Interpolazione dei valori della temperatura in
             %corrispondenza dei valori del tempo nel range compreso
@@ -1018,64 +1122,64 @@ switch order
             %temperatura
         end
     otherwise
-        warning('OpenFile:notFoundInPath', ['Could not find trend of ' config.Variable ' in time. Check DataExperiment.log']);
+        warning('OpenFile:notFoundInPath', ['Could not find trend of ' Variable ' in time. Check DataExperiment.log']);
         return
 end
 %% Figura 1: SAXD completo
-if config.flagfigure(1)==1
+if flagfigure(1)==1
     scrsz = get(0,'ScreenSize');
     %  scrsz=[left, bottom, width, height]
     figure1 = figure(...
         'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-        'Name',['SAXD Pattern of ',config.titolofigura, orderstring],...
+        'Name',['SAXD Pattern of ',titolofigura, orderstring],...
         'PaperPosition',[0.6345 6.345 20.3 15.23],...
         'PaperSize',[20.98 29.68],...
         'PaperType','A4');
-    colormap(config.mappa);
+    colormap(mappa);
     %Create axes
     axes1 = axes(...
         'YMinorGrid','on',...
         'Parent',figure1);
-    axis(axes1,[getTime(1,1) getTime(ncurves-nreject,1)+1 config.SAXDlim(1) config.SAXDlim(2) ZminSAXD ZmaxSAXD]);
+    axis(axes1,[getTime(1,1) getTime(ncurves-nreject,1)+1 SAXDlim(1) SAXDlim(2) ZminSAXD ZmaxSAXD]);
     camproj(axes1,'orthographic')
-    if strcmp(config.label,'config.Variable')
+    if strcmp(label,'Variable')
         Xtick=[yi,yii];
-        Xtickconfig.labeldouble=[xi,xii];
-        n=XlabelStep/config.XtickStep;
-        m=size(Xtickconfig.labeldouble);
-        Xtickconfig.label=cell(m);
+        Xticklabeldouble=[xi,xii];
+        n=XlabelStep/XtickStep;
+        m=size(Xticklabeldouble);
+        Xticklabel=cell(m);
         for i=1: m(2)
-            Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+            Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
         end
         for i=1:n: m(2)+1
             for j=1:n-1
                 if i+j>m(2)
                     break
                 else
-                    Xtickconfig.label{i+j}='';
+                    Xticklabel{i+j}='';
                 end
             end
         end
         set(axes1,'XTick',Xtick);
-        set(axes1,'XTickconfig.label',Xtickconfig.label,'FontName',config.font_name);
+        set(axes1,'XTickLabel',Xticklabel,'FontName',font_name);
         set(axes1,'XMinorTick','on');
-        xlabel(axes1,config.xlabelVariable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes1,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     else
-        xlabel(axes1,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes1,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    if config.titoli
-        title(axes1,[ 'SAXD Pattern of ',config.titolofigura1,orderstring],'FontWeight','bold','FontName',config.font_name, 'FontSize', 8);
+    if titoli
+        title(axes1,[ 'SAXD Pattern of ',titolofigura1,orderstring],'FontWeight','bold','FontName',font_name, 'FontSize', 8);
     end
-    if strcmp(config.label,'config.Variable')
-        xlabel(axes1,Xlabelconfig.Variable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if strcmp(label,'Variable')
+        xlabel(axes1,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     else
-        xlabel(axes1,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes1,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes1,'Interplanar Distances(Å)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    zlabel(axes1,'Intensity (counts)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    view(axes1,config.ViewColorFigures);
+    ylabel(axes1,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    zlabel(axes1,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    view(axes1,ViewColorFigures);
     grid(axes1,'on');
-    hold(axes1,'on');
+    hold(axes1,'all');
     % Create mesh
     mesh1 = mesh(...
         getTime(:,1),dSAXD,IntensitySAXD,ColoriSAXD,...
@@ -1085,14 +1189,14 @@ if config.flagfigure(1)==1
         'BackFaceLighting',' unlit',...
         'Edgecolor','interp',...
         'EdgeLighting','flat');
-    if config.DSCas2dPlots
+    if DSCas2dPlots
         hold on
         X=reshape(OPE,1,[]);
         for i=1:size(X,2)
             plot3(getTime(X(i),1)*ones(size(dSAXD)), dSAXD, IntensitySAXD(:,X(i)), 'r', 'LineWidth', 3);
         end
     end
-    if config.createcolorbar
+    if createcolorbar
         % Create colorbar
         colorbar1 = colorbar('peer',...
             axes1,[0.9411 0.3916 0.01529 0.5227],...
@@ -1103,59 +1207,59 @@ if config.flagfigure(1)==1
             figure1,'textbox',...
             'Position',[0.9125 0.904 0.07917 0.0746],...
             'LineStyle','none',...
-            'String',{colorbarconfig.label},...
+            'String',{colorbarlabel},...
             'FontWeight','bold',...
-            'FontName',config.font_name, 'FontSize', config.font_size,...
+            'FontName',font_name, 'FontSize', font_size,...
             'FitHeightToText','on');
     end
     % Create light
     light11 = light('Parent',axes1, 'position', [1 0 0],'style', 'infinite','visible', 'on');
     light12 = light('Parent',axes1, 'position', [0 1 0],'style', 'infinite','visible', 'on');
     light13 = light('Parent',axes1, 'position', [0 0 1],'style', 'infinite','visible', 'on');
-    %     saveas(figure1,[config.path,'\', 'SAXD.fig'],'fig')
-    %     saveas(figure1,[config.path,'\', 'SAXD.',config.estFigure],config.estFigure)
-    switch config.Variable
+    %     saveas(figure1,[percorso,'\', 'SAXD.fig'],'fig')
+    %     saveas(figure1,[percorso,'\', 'SAXD.',estFigure],estFigure)
+    switch Variable
         case 'Temperature'
-            saveas(figure1,[config.path,'\', 'SAXD_Temperature.fig'],'fig')
-            saveas(figure1,[config.path,'\', 'SAXD_Temperature.',config.estFigure],config.estFigure)
+            saveas(figure1,[percorso,'\', 'SAXD_Temperature.fig'],'fig')
+            saveas(figure1,[percorso,'\', 'SAXD_Temperature.',estFigure],estFigure)
         otherwise
-            saveas(figure1,[config.path,'\', 'SAXD_',config.Variable, '.fig'],'fig')
-            saveas(figure1,[config.path,'\', 'SAXD_',config.Variable, '.', config.estFigure],config.estFigure)
+            saveas(figure1,[percorso,'\', 'SAXD_',Variable, '.fig'],'fig')
+            saveas(figure1,[percorso,'\', 'SAXD_',Variable, '.', estFigure],estFigure)
     end
     if closeimages
         close(gcf)
     end
 end
 %% Figura 2: SAXD cristallizzazione
-if config.flagfigure(2)==1
+if flagfigure(2)==1
     scrsz = get(0,'ScreenSize');
     %  scrsz=[left, bottom, width, height]
     figure2 = figure(...
         'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-        'Name',['SAXD Pattern of ',config.titolofigura, orderstring1],...
+        'Name',['SAXD Pattern of ',titolofigura, orderstring1],...
         'PaperPosition',[0.6345 6.345 20.3 15.23],...
         'PaperSize',[20.98 29.68],...
         'PaperType','A4');
-    colormap(config.mappa);
+    colormap(mappa);
     switch order
         case 2  %', Crystallization'
             Xmin=1;
-            Xmax=config.TMax;
-            if strcmp(config.label,'config.Variable')
+            Xmax=TMax;
+            if strcmp(label,'Variable')
                 Xtick=[yp1 yi yp2];
-                Xtickconfig.labeldouble=[xp1 xi xp2];
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=[xp1 xi xp2];
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
@@ -1163,43 +1267,43 @@ if config.flagfigure(2)==1
         case {3,6}  %', Crystallization and Melting'
             Xmin=0;
             Xmax=TcMax;
-            if strcmp(config.label,'config.Variable')
+            if strcmp(label,'Variable')
                 Xtick=yi;
-                Xtickconfig.labeldouble=xi;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xi;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
             end
         case {1,4}  %', Melting and Crystallization'
             Xmin=TcMin;
-            Xmax=config.TMax;
-            if strcmp(config.label,'config.Variable')
+            Xmax=TMax;
+            if strcmp(label,'Variable')
                 Xtick=yii;
-                Xtickconfig.labeldouble=xii;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xii;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
@@ -1209,24 +1313,24 @@ if config.flagfigure(2)==1
     axes2 = axes(...
         'YMinorGrid','on',...
         'Parent',figure2);
-    axis(axes2,[Xmin Xmax config.SAXDlim(1) config.SAXDlim(2) ZmincSAXD ZmaxcSAXD]);
+    axis(axes2,[Xmin Xmax SAXDlim(1) SAXDlim(2) ZmincSAXD ZmaxcSAXD]);
     camproj(axes2,'orthographic')
-    if config.titoli
-        title(axes2,['SAXD pattern of ',config.titolofigura1, orderstring1],'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if titoli
+        title(axes2,['SAXD pattern of ',titolofigura1, orderstring1],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    if strcmp(config.label,'config.Variable')
+    if strcmp(label,'Variable')
         set(axes2,'XTick',Xtick);
-        set(axes2,'XTickconfig.label',Xtickconfig.label,'FontName',config.font_name, 'FontSize', config.font_size);
+        set(axes2,'XTickLabel',Xticklabel,'FontName',font_name, 'FontSize', font_size);
         set(axes2,'XMinorTick','on');
-        xlabel(axes2,Xlabelconfig.Variable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes2,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     else
-        xlabel(axes2,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes2,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes2,'Interplanar Distances(Å)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    zlabel(axes2,'Intensity (counts)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    view(axes2,config.ViewColorFigures);
+    ylabel(axes2,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    zlabel(axes2,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    view(axes2,ViewColorFigures);
     grid(axes2,'on');
-    hold(axes2,'on');
+    hold(axes2,'all');
     % Create mesh
     mesh2 = mesh(...
         TempiCristallizzazione,dSAXD,IntensitySAXDCristallizzazione,ColoriSAXDCristallizzazione,...
@@ -1236,7 +1340,7 @@ if config.flagfigure(2)==1
         'BackFaceLighting',' unlit',...
         'Edgecolor','interp',...
         'EdgeLighting','flat');
-    if config.DSCas2dPlots
+    if DSCas2dPlots
         hold on
         X=reshape(OPE,1,[]);
         for i=1:size(X,2)
@@ -1246,7 +1350,7 @@ if config.flagfigure(2)==1
         end
     end
 
-    if config.createcolorbar
+    if createcolorbar
         % Create colorbar
         colorbar2 = colorbar;
         % Create textbox
@@ -1254,79 +1358,79 @@ if config.flagfigure(2)==1
             figure2,'textbox',...
             'Position',[0.9125 0.904 0.07917 0.0746],...
             'LineStyle','none',...
-            'String',{colorbarconfig.label},...
+            'String',{colorbarlabel},...
             'FontWeight','bold',...
-            'FontName',config.font_name, 'FontSize', config.font_size,...
+            'FontName',font_name, 'FontSize', font_size,...
             'FitHeightToText','on');
     end
     % Create light
     light21 = light('Parent',axes2, 'position', [1 0 0],'style', 'infinite','visible', 'on');
     light22 = light('Parent',axes2, 'position', [0 1 0],'style', 'infinite','visible', 'on');
     light23 = light('Parent',axes2, 'position', [0 0 1],'style', 'infinite','visible', 'on');
-    switch config.Variable
+    switch Variable
         case 'Temperature'
-            saveas(figure2,[config.path,'\', 'SAXD_cryst.fig'],'fig')
-            saveas(figure2,[config.path,'\', 'SAXD_cryst.',config.estFigure],config.estFigure)
+            saveas(figure2,[percorso,'\', 'SAXD_cryst.fig'],'fig')
+            saveas(figure2,[percorso,'\', 'SAXD_cryst.',estFigure],estFigure)
         otherwise
-            saveas(figure2,[config.path,'\', 'SAXDdecr.fig'],'fig')
-            saveas(figure2,[config.path,'\', 'SAXDdecr.',config.estFigure],config.estFigure)
+            saveas(figure2,[percorso,'\', 'SAXDdecr.fig'],'fig')
+            saveas(figure2,[percorso,'\', 'SAXDdecr.',estFigure],estFigure)
     end
     if closeimages
         close(gcf)
     end
 end
 %% Figura 3: SAXD fusione
-if config.flagfigure(3)==1
+if flagfigure(3)==1
     scrsz = get(0,'ScreenSize');
     %  scrsz=[left, bottom, width, height]
     figure3 = figure(...
         'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-        'Name',['SAXD Pattern of ',config.titolofigura, orderstring2],...
+        'Name',['SAXD Pattern of ',titolofigura, orderstring2],...
         'PaperPosition',[0.6345 6.345 20.3 15.23],...
         'PaperSize',[20.98 29.68],...
         'PaperType','A4');
-    colormap(config.mappa);
+    colormap(mappa);
     switch order
         case {1,4}  %', Melting and Crystallization';
             Xmin=0;
             Xmax=TfMax;
-            if strcmp(config.label,'config.Variable')
+            if strcmp(label,'Variable')
                 Xtick=yi;
-                Xtickconfig.labeldouble=xi;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xi;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
             end
         case {3,6}  %', Crystallization and Melting'
             Xmin=TfMin;
-            Xmax=config.TMax;
-            if strcmp(config.label,'config.Variable')
+            Xmax=TMax;
+            if strcmp(label,'Variable')
                 Xtick=yii;
-                Xtickconfig.labeldouble=xii;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xii;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
@@ -1334,21 +1438,21 @@ if config.flagfigure(3)==1
         case 5  %', Melting'
             Xmin=0;
             Xmax=TfMax;
-            if strcmp(config.label,'config.Variable')
+            if strcmp(label,'Variable')
                 Xtick=yi;
-                Xtickconfig.labeldouble=xi;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xi;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
@@ -1358,22 +1462,22 @@ if config.flagfigure(3)==1
     axes3 = axes(...
         'YMinorGrid','on',...
         'Parent',figure3);
-    axis(axes3,[Xmin Xmax config.SAXDlim(1) config.SAXDlim(2) ZminfSAXD ZmaxfSAXD]);
+    axis(axes3,[Xmin Xmax SAXDlim(1) SAXDlim(2) ZminfSAXD ZmaxfSAXD]);
     camproj(axes3,'orthographic')
-    if config.titoli
-        title(axes3,['SAXD pattern of ',config.titolofigura1, orderstring],'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if titoli
+        title(axes3,['SAXD pattern of ',titolofigura1, orderstring],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    if strcmp(config.label,'config.Variable')
+    if strcmp(label,'Variable')
         set(axes3,'XTick',Xtick);
-        set(axes3,'XTickconfig.label',Xtickconfig.label,'FontName',config.font_name, 'FontSize', config.font_size);
+        set(axes3,'XTickLabel',Xticklabel,'FontName',font_name, 'FontSize', font_size);
         set(axes3,'XMinorTick','on');
-        xlabel(axes3,Xlabelconfig.Variable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes3,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     else
-        xlabel(axes3,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes3,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes3,'Interplanar Distances(Å)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    zlabel(axes3,'Intensity (counts)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    view(axes3,config.ViewColorFigures);
+    ylabel(axes3,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    zlabel(axes3,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    view(axes3,ViewColorFigures);
     grid(axes3,'on');
     hold(axes3,'all');
     % Create mesh
@@ -1385,7 +1489,7 @@ if config.flagfigure(3)==1
         'BackFaceLighting',' unlit',...
         'Edgecolor','interp',...
         'EdgeLighting','flat');
-    if config.DSCas2dPlots
+    if DSCas2dPlots
         hold on
         X=reshape(OPE,1,[]);
         for i=1:size(X,2)
@@ -1395,7 +1499,7 @@ if config.flagfigure(3)==1
         end
     end
 
-    if config.createcolorbar
+    if createcolorbar
         % Create colorbar
         colorbar3 = colorbar;
         % Create textbox
@@ -1404,78 +1508,78 @@ if config.flagfigure(3)==1
             'Position',[0.9125 0.904 0.07917 0.0746],...
             'LineStyle','none',...
             'FontWeight','bold',...
-            'FontName',config.font_name, 'FontSize', config.font_size,...
-            'String',{colorbarconfig.label},...
+            'FontName',font_name, 'FontSize', font_size,...
+            'String',{colorbarlabel},...
             'FitHeightToText','on');
     end
     % Create light
     light31 = light('Parent',axes3, 'position', [1 0 0],'style', 'infinite','visible', 'on');
     light32 = light('Parent',axes3, 'position', [0 1 0],'style', 'infinite','visible', 'on');
     light33 = light('Parent',axes3, 'position', [0 0 1],'style', 'infinite','visible', 'on');
-    %     saveas(figure3,[config.path,'\', 'SAXDincr.fig'],'fig')
-    %     saveas(figure3,[config.path,'\', 'SAXDincr.',config.estFigure],config.estFigure)
-    switch config.Variable
+    %     saveas(figure3,[percorso,'\', 'SAXDincr.fig'],'fig')
+    %     saveas(figure3,[percorso,'\', 'SAXDincr.',estFigure],estFigure)
+    switch Variable
         case 'Temperature'
-            saveas(figure3,[config.path,'\', 'SAXD_melt.fig'],'fig')
-            saveas(figure3,[config.path,'\', 'SAXD_melt.',config.estFigure],config.estFigure)
+            saveas(figure3,[percorso,'\', 'SAXD_melt.fig'],'fig')
+            saveas(figure3,[percorso,'\', 'SAXD_melt.',estFigure],estFigure)
         otherwise
-            saveas(figure3,[config.path,'\', 'SAXDincr.fig'],'fig')
-            saveas(figure3,[config.path,'\', 'SAXDincr.',config.estFigure],config.estFigure)
+            saveas(figure3,[percorso,'\', 'SAXDincr.fig'],'fig')
+            saveas(figure3,[percorso,'\', 'SAXDincr.',estFigure],estFigure)
     end
     if closeimages
         close(gcf)
     end
 end
 %% Figura 4: WAXD completo
-if config.flagfigure(4)==1
+if flagfigure(4)==1
     scrsz = get(0,'ScreenSize');
     %  scrsz=[left, bottom, width, height]
     figure4 = figure(...
         'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-        'Name',['WAXD Pattern of ',config.titolofigura, orderstring],...
+        'Name',['WAXD Pattern of ',titolofigura, orderstring],...
         'PaperPosition',[0.6345 6.345 20.3 15.23],...
         'PaperSize',[20.98 29.68],...
         'PaperType','A4');
-    colormap(config.mappa);
+    colormap(mappa);
     axes4 = axes(...
         'YMinorGrid','on',...
         'Parent',figure4);
-    axis(axes4,[getTime(1,1) getTime(ncurves-nreject,1)+1 config.WAXDlim(1) config.WAXDlim(2) ZminWAXD ZmaxWAXD]);
+    axis(axes4,[getTime(1,1) getTime(ncurves-nreject,1)+1 WAXDlim(1) WAXDlim(2) ZminWAXD ZmaxWAXD]);
     camproj(axes4,'orthographic')
-    if strcmp(config.label,'config.Variable')
+    if strcmp(label,'Variable')
         Xtick=[yi,yii];
-        Xtickconfig.labeldouble=[xi,xii];
-        n=XlabelStep/config.XtickStep;
-        m=size(Xtickconfig.labeldouble);
-        Xtickconfig.label=cell(m);
+        Xticklabeldouble=[xi,xii];
+        n=XlabelStep/XtickStep;
+        m=size(Xticklabeldouble);
+        Xticklabel=cell(m);
         for i=1: m(2)
-            Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+            Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
         end
         for i=1:n: m(2)+1
             for j=1:n-1
                 if i+j>m(2)
                     break
                 else
-                    Xtickconfig.label{i+j}='';
+                    Xticklabel{i+j}='';
                 end
             end
         end
         set(axes4,'XTick',Xtick);
-        set(axes4,'XTickconfig.label',Xtickconfig.label,'FontName',config.font_name, 'FontSize', config.font_size);
+        set(axes4,'XTickLabel',Xticklabel,'FontName',font_name, 'FontSize', font_size);
         set(axes4,'XMinorTick','on');
     end
-    if config.titoli
-        title(axes4,[ 'WAXD Pattern of ',config.titolofigura1,orderstring],'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if titoli
+        title(axes4,[ 'WAXD Pattern of ',titolofigura1,orderstring],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    if strcmp(config.label,'config.Variable')
-        xlabel(axes4,Xlabelconfig.Variable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if strcmp(label,'Variable')
+        xlabel(axes4,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     else
-        xlabel(axes4,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes4,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes4,'Interplanar Distances(Å)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    zlabel(axes4,'Intensity (counts)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    ylabel(axes4,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    zlabel(axes4,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
 
-    view(axes4,config.ViewColorFigures);
+    view(axes4,ViewColorFigures);
     grid(axes4,'on');
     hold(axes4,'on');
     %Create mesh
@@ -1487,14 +1591,14 @@ if config.flagfigure(4)==1
         'BackFaceLighting',' unlit',...
         'Edgecolor','interp',...
         'EdgeLighting','flat');
-    if config.DSCas2dPlots
+    if DSCas2dPlots
         hold on
         X=reshape(OPE,1,[]);
         for i=1:size(X,2)
                 plot3(getTime(X(i),1)*ones(size(dWAXD)), dWAXD, IntensityWAXD(:,X(i)), 'r', 'LineWidth', 3);
         end
     end
-    if config.createcolorbar
+    if createcolorbar
         % Create colorbar
         colorbar4 = colorbar;
         % Create textbox
@@ -1503,58 +1607,58 @@ if config.flagfigure(4)==1
             'Position',[0.9125 0.904 0.07917 0.0746],...
             'LineStyle','none',...
             'FontWeight','bold',...
-            'FontName',config.font_name, 'FontSize', config.font_size,...
-            'String',{colorbarconfig.label},...
+            'FontName',font_name, 'FontSize', font_size,...
+            'String',{colorbarlabel},...
             'FitHeightToText','on');
     end
     % Create light
     light41 = light('Parent',axes4, 'position', [-1 0 0],'style', 'infinite','visible', 'on');
     light42 = light('Parent',axes4, 'position', [0 -1 0],'style', 'infinite','visible', 'on');
     light43 = light('Parent',axes4, 'position', [0 0 -1],'style', 'infinite','visible', 'on');
-    %     saveas(figure4,[config.path,'\', 'WAXD.fig'],'fig')
-    %     saveas(figure4,[config.path,'\', 'WAXD.',config.estFigure],config.estFigure)
-    switch config.Variable
+    %     saveas(figure4,[percorso,'\', 'WAXD.fig'],'fig')
+    %     saveas(figure4,[percorso,'\', 'WAXD.',estFigure],estFigure)
+    switch Variable
         case 'Temperature'
-            saveas(figure4,[config.path,'\', 'WAXD_Temperature.fig'],'fig')
-            saveas(figure4,[config.path,'\', 'WAXD_Temperature.',config.estFigure],config.estFigure)
+            saveas(figure4,[percorso,'\', 'WAXD_Temperature.fig'],'fig')
+            saveas(figure4,[percorso,'\', 'WAXD_Temperature.',estFigure],estFigure)
         otherwise
-            saveas(figure4,[config.path,'\', 'WAXD_',config.Variable, '.fig'],'fig')
-            saveas(figure4,[config.path,'\', 'WAXD_',config.Variable, '.', config.estFigure],config.estFigure)
+            saveas(figure4,[percorso,'\', 'WAXD_',Variable, '.fig'],'fig')
+            saveas(figure4,[percorso,'\', 'WAXD_',Variable, '.', estFigure],estFigure)
     end
     if closeimages
         close(gcf)
     end
 end
 %% Figura 5: WAXD cristallizzazione
-if config.flagfigure(5)==1
+if flagfigure(5)==1
     scrsz = get(0,'ScreenSize');
     %  scrsz=[left, bottom, width, height]
     figure5 = figure(...
         'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-        'Name',['WAXD Pattern of ',config.titolofigura, orderstring1],...
+        'Name',['WAXD Pattern of ',titolofigura, orderstring1],...
         'PaperPosition',[0.6345 6.345 20.3 15.23],...
         'PaperSize',[20.98 29.68],...
         'PaperType','A4');
-    colormap(config.mappa);
+    colormap(mappa);
     switch order
         case 2  %', Crystallization'
             Xmin=1;
-            Xmax=config.TMax;
-            if strcmp(config.label,'config.Variable')
+            Xmax=TMax;
+            if strcmp(label,'Variable')
                 Xtick=[yp1 yi yp2];
-                Xtickconfig.labeldouble=[xp1 xi xp2];
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=[xp1 xi xp2];
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
@@ -1562,43 +1666,43 @@ if config.flagfigure(5)==1
         case {3,6}  %', Crystallization and Melting'
             Xmin=0;
             Xmax=TcMax;
-            if strcmp(config.label,'config.Variable')
+            if strcmp(label,'Variable')
                 Xtick=yi;
-                Xtickconfig.labeldouble=xi;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xi;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
             end
         case {1,4}  %', Melting and Crystallization'
             Xmin=TcMin;
-            Xmax=config.TMax;
-            if strcmp(config.label,'config.Variable')
+            Xmax=TMax;
+            if strcmp(label,'Variable')
                 Xtick=yii;
-                Xtickconfig.labeldouble=xii;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xii;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
@@ -1608,22 +1712,22 @@ if config.flagfigure(5)==1
     axes5 = axes(...
         'YMinorGrid','on',...
         'Parent',figure5);
-    axis(axes5,[Xmin Xmax config.WAXDlim(1) config.WAXDlim(2) ZmincWAXD ZmaxcWAXD]);
+    axis(axes5,[Xmin Xmax WAXDlim(1) WAXDlim(2) ZmincWAXD ZmaxcWAXD]);
     camproj(axes5,'orthographic')
-    if config.titoli
-        title(axes5,['WAXD pattern of ',config.titolofigura1, orderstring1],'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if titoli
+        title(axes5,['WAXD pattern of ',titolofigura1, orderstring1],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    if strcmp(config.label,'config.Variable')
+    if strcmp(label,'Variable')
         set(axes5,'XTick',Xtick);
-        set(axes5,'XTickconfig.label',Xtickconfig.label,'FontName',config.font_name, 'FontSize', config.font_size);
+        set(axes5,'XTickLabel',Xticklabel,'FontName',font_name, 'FontSize', font_size);
         set(axes5,'XMinorTick','on');
-        xlabel(axes5,Xlabelconfig.Variable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes5,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     else
-        xlabel(axes5,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes5,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes5,'Interplanar Distances(Å)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    zlabel(axes5,'Intensity (counts)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    view(axes5,config.ViewColorFigures);
+    ylabel(axes5,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    zlabel(axes5,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    view(axes5,ViewColorFigures);
     grid(axes5,'on');
     hold(axes5,'all');
     % Create mesh
@@ -1643,7 +1747,7 @@ if config.flagfigure(5)==1
         end
     end
 
-    if config.createcolorbar
+    if createcolorbar
         % Create colorbar
         colorbar5 = colorbar;
         % Create textbox
@@ -1652,8 +1756,8 @@ if config.flagfigure(5)==1
             'Position',[0.9125 0.904 0.07917 0.0746],...
             'LineStyle','none',...
             'FontWeight','bold',...
-            'FontName',config.font_name, 'FontSize', config.font_size,...
-            'String',{colorbarconfig.label},...
+            'FontName',font_name, 'FontSize', font_size,...
+            'String',{colorbarlabel},...
             'FitHeightToText','on');
     end
     % Create light
@@ -1663,72 +1767,72 @@ if config.flagfigure(5)==1
     % light54 = light('Parent',axes5, 'position', [1 0 0],'style','infinite','visible', 'on');
     % light55 = light('Parent',axes5, 'position', [0 1 0],'style', 'infinite','visible', 'on');
     % light56 = light('Parent',axes5, 'position', [0 0 1],'style', 'infinite','visible', 'on');
-    %     saveas(figure5,[config.path,'\', 'WAXDdecr.fig'],'fig')
-    %     saveas(figure5,[config.path,'\', 'WAXDdecr.',config.estFigure],config.estFigure)
-    switch config.Variable
+    %     saveas(figure5,[percorso,'\', 'WAXDdecr.fig'],'fig')
+    %     saveas(figure5,[percorso,'\', 'WAXDdecr.',estFigure],estFigure)
+    switch Variable
         case 'Temperature'
-            saveas(figure5,[config.path,'\', 'WAXD_cryst.fig'],'fig')
-            saveas(figure5,[config.path,'\', 'WAXD_cryst.',config.estFigure],config.estFigure)
+            saveas(figure5,[percorso,'\', 'WAXD_cryst.fig'],'fig')
+            saveas(figure5,[percorso,'\', 'WAXD_cryst.',estFigure],estFigure)
         otherwise
-            saveas(figure5,[config.path,'\', 'WAXDdecr.fig'],'fig')
-            saveas(figure5,[config.path,'\', 'WAXDdecr.',config.estFigure],config.estFigure)
+            saveas(figure5,[percorso,'\', 'WAXDdecr.fig'],'fig')
+            saveas(figure5,[percorso,'\', 'WAXDdecr.',estFigure],estFigure)
     end
     if closeimages
         close(gcf)
     end
 end
 %% Figura 6: WAXD fusione
-if config.flagfigure(6)==1
+if flagfigure(6)==1
     scrsz = get(0,'ScreenSize');
     %  scrsz=[left, bottom, width, height]
     figure6 = figure(...
         'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-        'Name',['WAXD Pattern of ',config.titolofigura, orderstring2],...
+        'Name',['WAXD Pattern of ',titolofigura, orderstring2],...
         'PaperPosition',[0.6345 6.345 20.3 15.23],...
         'PaperSize',[20.98 29.68],...
         'PaperType','A4');
-    colormap(config.mappa);
+    colormap(mappa);
     switch order
         case {1,4}  %', Melting and Crystallization';
             Xmin=0;
             Xmax=TfMax;
-            if strcmp(config.label,'config.Variable')
+            if strcmp(label,'Variable')
                 Xtick=yi;
-                Xtickconfig.labeldouble=xi;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xi;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
             end
         case {3,6}  %', Crystallization and Melting'
             Xmin=TfMin;
-            Xmax=config.TMax;
-            if strcmp(config.label,'config.Variable')
+            Xmax=TMax;
+            if strcmp(label,'Variable')
                 Xtick=yii;
-                Xtickconfig.labeldouble=xii;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xii;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
@@ -1736,21 +1840,21 @@ if config.flagfigure(6)==1
         case 5 %', Melting'
             Xmin=0;
             Xmax=TfMax;
-            if strcmp(config.label,'config.Variable')
+            if strcmp(label,'Variable')
                 Xtick=yi;
-                Xtickconfig.labeldouble=xi;
-                n=XlabelStep/config.XtickStep;
-                m=size(Xtickconfig.labeldouble);
-                Xtickconfig.label=cell(m);
+                Xticklabeldouble=xi;
+                n=XlabelStep/XtickStep;
+                m=size(Xticklabeldouble);
+                Xticklabel=cell(m);
                 for i=1: m(2)
-                    Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                    Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
                 end
                 for i=1:n: m(2)+1
                     for j=1:n-1
                         if i+j>m(2)
                             break
                         else
-                            Xtickconfig.label{i+j}='';
+                            Xticklabel{i+j}='';
                         end
                     end
                 end
@@ -1760,22 +1864,22 @@ if config.flagfigure(6)==1
     axes6 = axes(...
         'YMinorGrid','on',...
         'Parent',figure6);
-    axis(axes6,[Xmin Xmax config.WAXDlim(1) config.WAXDlim(2) ZminfWAXD ZmaxfWAXD]);
+    axis(axes6,[Xmin Xmax WAXDlim(1) WAXDlim(2) ZminfWAXD ZmaxfWAXD]);
     camproj(axes6,'orthographic')
-    if config.titoli
-        title(axes6,['WAXD pattern of ',config.titolofigura1, orderstring2],'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if titoli
+        title(axes6,['WAXD pattern of ',titolofigura1, orderstring2],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    if strcmp(config.label,'config.Variable')
+    if strcmp(label,'Variable')
         set(axes6,'XTick',Xtick);
-        set(axes6,'XTickconfig.label',Xtickconfig.label,'FontName',config.font_name, 'FontSize', config.font_size);
+        set(axes6,'XTickLabel',Xticklabel,'FontName',font_name, 'FontSize', font_size);
         set(axes6,'XMinorTick','on');
-        xlabel(axes6,Xlabelconfig.Variable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes6,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     else
-        xlabel(axes6,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes6,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes6,'Interplanar Distances(Å)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    zlabel(axes6,'Intensity (counts)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    view(axes6,config.ViewColorFigures);
+    ylabel(axes6,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    zlabel(axes6,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    view(axes6,ViewColorFigures);
     grid(axes6,'on');
     hold(axes6,'all');
     % Create mesh
@@ -1794,7 +1898,7 @@ if config.flagfigure(6)==1
             plot3(getTime(X(i),1)*ones(size(dWAXD)), dWAXD, IntensityWAXD(:,X(i)), 'r', 'LineWidth', 3);
         end
     end
-    if config.createcolorbar
+    if createcolorbar
         % Create colorbar
         colorbar6 = colorbar;
         % Create textbox
@@ -1803,36 +1907,36 @@ if config.flagfigure(6)==1
             'Position',[0.9125 0.904 0.07917 0.0746],...
             'LineStyle','none',...
             'FontWeight','bold',...
-            'FontName',config.font_name, 'FontSize', config.font_size,...
-            'String',{colorbarconfig.label},...
+            'FontName',font_name, 'FontSize', font_size,...
+            'String',{colorbarlabel},...
             'FitHeightToText','on');
     end
     % Create light
     light61 = light('Parent',axes6, 'position', [-1 0 0],'style', 'infinite','visible', 'on');
     light62 = light('Parent',axes6, 'position', [0 -1 0],'style', 'infinite','visible', 'on');
     light63 = light('Parent',axes6, 'position', [0 0 -1],'style', 'infinite','visible', 'on');
-    %     saveas(figure6,[config.path,'\', 'WAXDincr.fig'],'fig')
-    %     saveas(figure6,[config.path,'\', 'WAXDincr.',config.estFigure],config.estFigure)
-    switch config.Variable
+    %     saveas(figure6,[percorso,'\', 'WAXDincr.fig'],'fig')
+    %     saveas(figure6,[percorso,'\', 'WAXDincr.',estFigure],estFigure)
+    switch Variable
         case 'Temperature'
-            saveas(figure6,[config.path,'\', 'WAXD_melt.fig'],'fig')
-            saveas(figure6,[config.path,'\', 'WAXD_melt.',config.estFigure],config.estFigure)
+            saveas(figure6,[percorso,'\', 'WAXD_melt.fig'],'fig')
+            saveas(figure6,[percorso,'\', 'WAXD_melt.',estFigure],estFigure)
         otherwise
-            saveas(figure6,[config.path,'\', 'WAXDincr.fig'],'fig')
-            saveas(figure6,[config.path,'\', 'WAXDincr.',config.estFigure],config.estFigure)
+            saveas(figure6,[percorso,'\', 'WAXDincr.fig'],'fig')
+            saveas(figure6,[percorso,'\', 'WAXDincr.',estFigure],estFigure)
     end
     if closeimages
         close(gcf)
     end
 end
 %% Figura 7: SAXD cristallizazione e fusione, in grigio
-if config.flagfigure(7)==1
+if flagfigure(7)==1
     if getTime(ncurves-nreject,1)>0
         scrsz = get(0,'ScreenSize');
         %  scrsz=[left, bottom, width, height]
         figure7 = figure(...
             'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-            'Name',['SAXD Pattern of ',config.titolofigura, orderstring],...
+            'Name',['SAXD Pattern of ',titolofigura, orderstring],...
             'PaperPosition',[0.6345 6.345 20.3 15.23],...
             'PaperSize',[20.98 29.68],...
             'PaperType','A4');
@@ -1841,41 +1945,41 @@ if config.flagfigure(7)==1
         axes7 = axes(...
             'YMinorGrid','on',...
             'Parent',figure7);
-        axis(axes7,[getTime(1,1) getTime(ncurves-nreject,1)+1 config.SAXDlim(1) config.SAXDlim(2) ZminSAXD ZmaxSAXD]);
+        axis(axes7,[getTime(1,1) getTime(ncurves-nreject,1)+1 SAXDlim(1) SAXDlim(2) ZminSAXD ZmaxSAXD]);
         camproj(axes7,'orthographic')
-        if strcmp(config.label,'config.Variable')
+        if strcmp(label,'Variable')
             Xtick=[yi,yii];
-            Xtickconfig.labeldouble=[xi,xii];
-            n=XlabelStep/config.XtickStep;
-            m=size(Xtickconfig.labeldouble);
-            Xtickconfig.label=cell(m);
+            Xticklabeldouble=[xi,xii];
+            n=XlabelStep/XtickStep;
+            m=size(Xticklabeldouble);
+            Xticklabel=cell(m);
             for i=1: m(2)
-                Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+                Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
             end
             for i=1:n: m(2)+1
                 for j=1:n-1
                     if i+j>m(2)
                         break
                     else
-                        Xtickconfig.label{i+j}='';
+                        Xticklabel{i+j}='';
                     end
                 end
             end
             set(axes7,'XTick',Xtick);
-            set(axes7,'XTickconfig.label',Xtickconfig.label,'FontName',config.font_name, 'FontSize', config.font_size);
+            set(axes7,'XTickLabel',Xticklabel,'FontName',font_name, 'FontSize', font_size);
             set(axes7,'XMinorTick','on');
         end
-        if config.titoli
-            title(axes7,[ 'SAXD Pattern of ',config.titolofigura1,orderstring],'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        if titoli
+            title(axes7,[ 'SAXD Pattern of ',titolofigura1,orderstring],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
         end
-        if strcmp(config.label,'config.Variable')
-            xlabel(axes7,Xlabelconfig.Variable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        if strcmp(label,'Variable')
+            xlabel(axes7,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
         else
-            xlabel(axes7,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+            xlabel(axes7,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
         end
-        ylabel(axes7,'Interplanar Distances(Å)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-        zlabel(axes7,'Intensity (counts)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-        view(axes7,config.ViewGrayFigures);
+        ylabel(axes7,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+        zlabel(axes7,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+        view(axes7,ViewGrayFigures);
         grid(axes7,'on');
         hold(axes7,'all');
         % Create mesh
@@ -1888,7 +1992,7 @@ if config.flagfigure(7)==1
             'LineStyle','-',...
             'FaceColor','Flat',...
             'EdgeColor','Interp');
-        if config.DSCas2dPlots
+        if DSCas2dPlots
             hold on
             X=reshape(OPE,1,[]);
             for i=1:size(X,2)
@@ -1902,20 +2006,20 @@ if config.flagfigure(7)==1
         light74 = light('Parent',axes7, 'position', [1 0 0],'style','infinite','visible', 'on');
         light75 = light('Parent',axes7, 'position', [0 1 0],'style', 'infinite','visible', 'on');
         light76 = light('Parent',axes7, 'position', [0 0 1],'style', 'infinite','visible', 'on');
-        saveas(figure7,[config.path,'\', 'SAXDgray.fig'],'fig')
-        saveas(figure7,[config.path,'\', 'SAXDgray.',config.estFigure],config.estFigure)
+        saveas(figure7,[percorso,'\', 'SAXDgray.fig'],'fig')
+        saveas(figure7,[percorso,'\', 'SAXDgray.',estFigure],estFigure)
         if closeimages
             close(gcf)
         end
     end
 end
 %% Figura 8: WAXD cristallizazione e fusione, in grigio
-if config.flagfigure(8)==1
+if flagfigure(8)==1
     scrsz = get(0,'ScreenSize');
     %  scrsz=[left, bottom, width, height]
     figure8 = figure(...
         'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-        'Name',['WAXD Pattern of ',config.titolofigura, orderstring],...
+        'Name',['WAXD Pattern of ',titolofigura, orderstring],...
         'PaperPosition',[0.6345 6.345 20.3 15.23],...
         'PaperSize',[20.98 29.68],...
         'PaperType','A4');
@@ -1923,41 +2027,41 @@ if config.flagfigure(8)==1
     axes8 = axes(...
         'YMinorGrid','on',...
         'Parent',figure8);
-    axis(axes8,[getTime(1,1) getTime(ncurves-nreject,1)+1 config.WAXDlim(1) config.WAXDlim(2) ZminWAXD ZmaxWAXD]);
+    axis(axes8,[getTime(1,1) getTime(ncurves-nreject,1)+1 WAXDlim(1) WAXDlim(2) ZminWAXD ZmaxWAXD]);
     camproj(axes8,'orthographic')
-    if strcmp(config.label,'config.Variable')
+    if strcmp(label,'Variable')
         Xtick=[yi,yii];
-        Xtickconfig.labeldouble=[xi,xii];
-        n=XlabelStep/config.XtickStep;
-        m=size(Xtickconfig.labeldouble);
-        Xtickconfig.label=cell(m);
+        Xticklabeldouble=[xi,xii];
+        n=XlabelStep/XtickStep;
+        m=size(Xticklabeldouble);
+        Xticklabel=cell(m);
         for i=1: m(2)
-            Xtickconfig.label(i)=cellstr(num2str(Xtickconfig.labeldouble(i)));
+            Xticklabel(i)=cellstr(num2str(Xticklabeldouble(i)));
         end
         for i=1:n: m(2)+1
             for j=1:n-1
                 if i+j>m(2)
                     break
                 else
-                    Xtickconfig.label{i+j}='';
+                    Xticklabel{i+j}='';
                 end
             end
         end
         set(axes8,'XTick',Xtick);
-        set(axes8,'XTickconfig.label',Xtickconfig.label,'FontName',config.font_name, 'FontSize', config.font_size);
+        set(axes8,'XTickLabel',Xticklabel,'FontName',font_name, 'FontSize', font_size);
         set(axes8,'XMinorTick','on');
     end
-    if config.titoli
-        title(axes8,[ 'WAXD Pattern of ',config.titolofigura1,orderstring],'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if titoli
+        title(axes8,[ 'WAXD Pattern of ',titolofigura1,orderstring],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    if strcmp(config.label,'config.Variable')
-        xlabel(axes8,Xlabelconfig.Variable,'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+    if strcmp(label,'Variable')
+        xlabel(axes8,xlabelVariable,'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     else
-        xlabel(axes8,'Time (min)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        xlabel(axes8,'Time (min)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
     end
-    ylabel(axes8,'Interplanar Distances(Å)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    zlabel(axes8,'Intensity (counts)','FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
-    view(axes8,config.ViewGrayFigures);
+    ylabel(axes8,'Interplanar Distances(Å)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    zlabel(axes8,'Intensity (counts)','FontWeight','bold','FontName',font_name, 'FontSize', font_size);
+    view(axes8,ViewGrayFigures);
     grid(axes8,'on');
     hold(axes8,'on');
     mesh8 = mesh(...
@@ -1969,7 +2073,7 @@ if config.flagfigure(8)==1
         'LineStyle','-',...
         'FaceColor','Flat',...
         'EdgeColor','Interp');
-    if config.DSCas2dPlots
+    if DSCas2dPlots
         hold on
         X=reshape(OPE,1,[]);
         for i=1:size(X,2)
@@ -1977,27 +2081,27 @@ if config.flagfigure(8)==1
         end
     end
 
-    saveas(figure8,[config.path,'\', 'WAXDgray.fig'],'fig')
-    saveas(figure8,[config.path,'\', 'WAXDgray.', config.estFigure],config.estFigure)
+    saveas(figure8,[percorso,'\', 'WAXDgray.fig'],'fig')
+    saveas(figure8,[percorso,'\', 'WAXDgray.', estFigure],estFigure)
     if closeimages
         close(gcf)
     end
 end
 %% Figura 9: Contour plot
-if config.flagfigure(9)==1
+if flagfigure(9)==1
     scrsz = get(0,'ScreenSize');
     %  scrsz=[left, bottom, width, height]
     figure9 = figure(...
         'Position',[1,scrsz(4)/25, scrsz(3)*2/3, scrsz(4)/2],...
-        'FileName',[config.path,'\', 'Contour.fig'],...
-        'Name',['SAXD and WAXD Pattern Contour of ',config.nameroot, orderstring],...
+        'FileName',[percorso,'\', 'Contour.fig'],...
+        'Name',['SAXD and WAXD Pattern Contour of ',nameroot, orderstring],...
         'PaperPosition',[0.6345 6.345 20.3 15.23],...
         'PaperSize',[20.98 29.68],...
         'PaperType','A4');
-    colormap(config.mappa);
+    colormap(mappa);
     % Create SAXS axes
-    if ~eq(config.SAXDlim(1), config.SAXDlim(2));
-        if ~eq(config.WAXDlim(1), config.WAXDlim(2));
+    if ~eq(SAXDlim(1), SAXDlim(2));
+        if ~eq(WAXDlim(1), WAXDlim(2));
             axes9 = axes(...
                 'Layer','top',...
                 'Position',[0.1 0.57 0.8 0.35],...
@@ -2012,9 +2116,9 @@ if config.flagfigure(9)==1
                 'XTick',[],...
                 'Parent',figure9);
         end
-        axis(axes9,[getTime(1,1) getTime(ncurves-nreject,1) config.SAXDlim(1) config.SAXDlim(2)]);
-        if config.titoli
-            title(axes9,['SAXD and WAXD Pattern Contour of ' , config.titolofigura1],'FontWeight','bold','FontName',config.font_name, 'FontSize', config.font_size);
+        axis(axes9,[getTime(1,1) getTime(ncurves-nreject,1) SAXDlim(1) SAXDlim(2)]);
+        if titoli
+            title(axes9,['SAXD and WAXD Pattern Contour of ' , titolofigura1],'FontWeight','bold','FontName',font_name, 'FontSize', font_size);
         end
         ylabel(axes9,'Interplanar Distance (Å)');
         hold(axes9,'all');
@@ -2022,10 +2126,10 @@ if config.flagfigure(9)==1
         contour9 = contour(getTime(:,1),...
             dSAXD,IntensitySAXD,...
             'Parent',axes9,...
-            'LevelStep',config.Contour9LevelStep);
+            'LevelStep',Contour9LevelStep);
     end
-    if ~eq(config.WAXDlim(1), config.WAXDlim(2));
-        if ~eq(config.SAXDlim(1), config.SAXDlim(2));
+    if ~eq(WAXDlim(1), WAXDlim(2));
+        if ~eq(SAXDlim(1), SAXDlim(2));
 
             % Create axes
             axes10 = axes('Position',[0.1 0.3 0.8 0.25],...
@@ -2038,13 +2142,13 @@ if config.flagfigure(9)==1
         end
         % 'XTickmode','manual',...
         % 'XTick',[],...
-        axis(axes10,[getTime(1,1) getTime(ncurves-nreject,1) config.WAXDlim(1) config.WAXDlim(2)]);
+        axis(axes10,[getTime(1,1) getTime(ncurves-nreject,1) WAXDlim(1) WAXDlim(2)]);
         hold(axes10,'all');
         % Create contour
         contour10 = contour(getTime(:,1),...
             dWAXD,IntensityWAXD,...
             'Parent',axes10,...
-            'LevelStep',config.Contour10LevelStep);
+            'LevelStep',Contour10LevelStep);
     end
     % Create axes
     axes11 = axes(...
@@ -2055,18 +2159,18 @@ if config.flagfigure(9)==1
         'Parent',figure9);
     axis(axes11,[getTime(1,1) getTime(ncurves-nreject,1) min(getVariable) max(getVariable)]);
     xlabel(axes11,'Time (min)');
-    ylabel(axes11,config.xlabelVariable);
-    hold(axes11,'on');
+    ylabel(axes11,xlabelVariable);
+    hold(axes11,'all');
     % Create plot
     plot1 = plot(...
         getTime(:,1),getVariable(:,1),...
         'Parent',axes11,...
-        'DisplayName','config.Variable',...
+        'DisplayName','Variable',...
         'XDataSource','getTime',...
         'YDataSource','getVariable');
     % Create annotations: DSC references
-    if config.DSCmatch
-        if exist(config.nomeOPE,'file')
+    if DSCmatch
+        if exist(nomeOPE,'file')
             k=size(TimeOPE);
             for i=1 : k(2)
                 annotation1 = annotation(figure9,...
@@ -2077,7 +2181,7 @@ if config.flagfigure(9)==1
                     'Color',[1 0 0]);
             end
             % Create textbox
-            if config.DSCpoints==3
+            if DSCpoints==3
                 mystring='----    Onset Peak Endset of DSC';
             else
                 mystring='----    Onset - Endset of DSC';
@@ -2092,13 +2196,13 @@ if config.flagfigure(9)==1
                 'String',{mystring});
         end
     end
-    switch config.Variable
+    switch Variable
         case 'Temperature'
             savefig(gcf,'Contour_Temperature.fig','compact')
-            saveas(figure9,[config.path,'\', 'Contour_Temperature.',config.estFigure],config.estFigure)
+            saveas(figure9,[percorso,'\', 'Contour_Temperature.',estFigure],estFigure)
         otherwise
-            savefig(gcf,['Contour_' config.Variable '.fig'],'compact')
-            saveas(figure9,[config.path '\' 'Contour_' config.Variable, '.', config.estFigure],config.estFigure)
+            savefig(gcf,['Contour_' Variable '.fig'],'compact')
+            saveas(figure9,[percorso '\' 'Contour_' Variable, '.', estFigure],estFigure)
     end
     if closeimages
         close(gcf)
@@ -2106,4 +2210,4 @@ if config.flagfigure(9)==1
 end
 %% Save workspace data
 
-save([config.path,'\',nomeWS]);
+save([percorso,'\',nomeWS]);
