@@ -700,11 +700,17 @@ if DSCmatch
             for k=1:si(2)%indice di colonna
                 for i= 1:ncurves-nreject-1
                     %Caso curva crescente
-                    if getVariable(i,1)<=TempOPE(j,k) && TempOPE(j,k)<= getVariable(i+1,1)&& TempOPE(j,1)<TempOPE(j,2)
+                    if  getVariable(i,1)<=TempOPE(j,k) && TempOPE(j,k)<= getVariable(i+1,1)&& TempOPE(j,1)<TempOPE(j,2)
                         q=q+1;
-                        OPE(j,q)=i;
+                        if abs(TempOPE(j,k)-getVariable(i,1))<abs(getVariable(i+1,1)-TempOPE(j,k))
+                            OPE(j,q)=i
+                        else                    % sceglie la curva più vicina in temperatura
+                            OPE(j,q)=i+1
+                        end
+
+                        %OPE(j,q)=i;
                         %TemperatureMatrix(:,i)=TemperatureMatrix(:,ncurves-nreject);
-                        if ~DSCas2dPlots                             
+                        if ~DSCas2dPlots
                             VariableMatrix(:,i)=VariableMatrix(:,1);
                         end
                         if (q==si(2))
@@ -716,12 +722,14 @@ if DSCmatch
                         %Caso curva decrescente
                     elseif getVariable(i,1)>=TempOPE(j,k) && TempOPE(j,k) >=getVariable(i+1,1)&& TempOPE(j,1)>=TempOPE(j,2)
                         q=q+1;
-                        OPE(j,q)=i
-                        %TemperatureMatrix(:,i)=TemperatureMatrix(:,ncurves-nreject);
+                        if abs(getVariable(i,1)-TempOPE(j,k))<abs(TempOPE(j,k) -getVariable(i+1,1))
+                            OPE(j,q)=i
+                        else                    % sceglie la curva più vicina in temperatura
+                            OPE(j,q)=i+1
+                        end
                         if ~DSCas2dPlots
                             VariableMatrix(:,i)=VariableMatrix(:,1);
                         end
-                        %TemperatureMatrix(:,i)=TemperatureMatrix(:,ncurves-nreject);
                         if (q==si(2))
                             q=0;
                         end
